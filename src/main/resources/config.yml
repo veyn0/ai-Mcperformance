@@ -49,23 +49,16 @@ view-distance:
   min: 4
   # Obere Grenze der Sichtweite.
   max: 12
-  # Schrittweite, mit der die Sichtweite erhöht/gesenkt wird.
-  step: 1
-  # Maximale Schritt-Multiplikatoren pro Anpassung (erlaubt größere Sprünge als step).
-  max-step-multiplier: 4
-  # Ab dieser MSPT wird die Sichtweite reduziert.
-  high-mspt: 50.0
-  # Unterhalb dieser MSPT wird die Sichtweite erhöht.
-  low-mspt: 35.0
-  # Zusätzliche MSPT pro Schritt bei Überschreitungen des High-MSPT-Werts.
-  overage-mspt-per-step: 5.0
+  # Ziel-MSPT für die Regelung.
+  target-mspt: 40.0
+  # EWMA-Glättung (0-1). Höher = reagiert schneller.
+  ewma-alpha: 0.3
+  # Maximale Veränderung der Sichtweite pro Minute (in View-Distance-Schritten).
+  max-adjust-per-minute: 6
+  # Erhöhung erst nach stabiler Unterschreitung des Zielwerts (Sekunden).
+  increase-stable-seconds: 30
   # Zeitfenster (in Sekunden) zur Berechnung des MSPT-Durchschnitts.
   sample-window-seconds: 60
-  # Reagiert auf schnelle MSPT-Anstiege auch ohne Thresholds.
-  rapid-mspt-increase: 15.0
-  rapid-sample-window-seconds: 10
-  rapid-baseline-window-seconds: 60
-  rapid-cooldown-seconds: 15
   # Prüfintervall (in Sekunden) für die Anpassung.
   check-interval-seconds: 15
   # Abklingzeit (in Sekunden) nach einer Anpassung.

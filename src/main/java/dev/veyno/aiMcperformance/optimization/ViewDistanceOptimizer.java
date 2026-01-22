@@ -13,11 +13,17 @@ import org.bukkit.World;
 import org.bukkit.plugin.Plugin;
 
 public class ViewDistanceOptimizer implements Runnable {
+    private static final double KP = 0.22;
+    private static final double KI = 0.015;
+    private static final double KD = 1.5;
+    private static final double STABLE_TREND_THRESHOLD = 0.2;
     private final Plugin plugin;
     private final PerformanceConfig config;
     private final PerformanceTracker tracker;
     private Instant lastChange = Instant.EPOCH;
-    private Instant lastRapidResponse = Instant.EPOCH;
+    private Instant belowTargetSince = null;
+    private Instant lastRun = Instant.EPOCH;
+    private double integratedError = 0.0;
 
     public ViewDistanceOptimizer(Plugin plugin, PerformanceConfig config, PerformanceTracker tracker) {
         this.plugin = plugin;
@@ -40,34 +46,88 @@ public class ViewDistanceOptimizer implements Runnable {
         }
         Instant now = Instant.now();
         int sampleWindow = Math.max(5, config.getViewDistanceSampleWindowSeconds());
-        double avgMspt = tracker.averageMspt(sampleWindow);
-        int min = config.getViewDistanceMin();
-        int max = config.getViewDistanceMax();
-        int step = Math.max(1, config.getViewDistanceStep());
-        boolean rapidIncrease = isRapidMsptIncrease();
+        double targetMspt = config.getViewDistanceTargetMspt();
+        PerformanceTracker.MsptEwmaTrend ewmaTrend = tracker.msptEwmaTrend(sampleWindow, config.getViewDistanceEwmaAlpha());
+        double ewmaMspt = ewmaTrend.ewmaMspt();
+        double trendPerSecond = ewmaTrend.trendPerSecond();
         boolean cooldownElapsed = lastChange.plusSeconds(config.getViewDistanceCooldownSeconds()).isBefore(now);
-        boolean rapidCooldownElapsed = lastRapidResponse
-                .plusSeconds(config.getViewDistanceRapidCooldownSeconds())
-                .isBefore(now);
+        double error = ewmaMspt - targetMspt;
+        if (lastRun.equals(Instant.EPOCH)) {
+            lastRun = now;
+        }
+        double elapsedSeconds = Math.max(1.0, ChronoUnit.MILLIS.between(lastRun, now) / 1000.0);
+        integratedError += error * elapsedSeconds;
+        integratedError = Math.max(-200.0, Math.min(200.0, integratedError));
+        lastRun = now;
 
-        if (rapidIncrease && rapidCooldownElapsed) {
-            int multiplier = computeDecreaseMultiplier(avgMspt, true);
-            adjustViewDistance(-step * multiplier, min, max);
-            lastRapidResponse = now;
-            return;
+        boolean belowTarget = ewmaMspt > 0 && ewmaMspt < targetMspt && Math.abs(trendPerSecond) <= STABLE_TREND_THRESHOLD;
+        if (belowTarget) {
+            if (belowTargetSince == null) {
+                belowTargetSince = now;
+            }
+        } else {
+            belowTargetSince = null;
         }
 
         if (!cooldownElapsed) {
             return;
         }
 
-        if (avgMspt >= config.getViewDistanceHighMspt()) {
-            int multiplier = computeDecreaseMultiplier(avgMspt, false);
-            adjustViewDistance(-step * multiplier, min, max);
-        } else if (avgMspt > 0 && avgMspt <= config.getViewDistanceLowMspt()) {
-            int delta = computeIncreaseDelta(step);
-            adjustViewDistance(delta, min, max);
+        double adjustment = -(KP * error + KI * integratedError + KD * trendPerSecond);
+        adjustment = applyAggressiveLowering(error, adjustment, sampleWindow);
+
+        int maxAdjust = Math.max(1, (int) Math.ceil(config.getViewDistanceMaxAdjustPerMinute() * (elapsedSeconds / 60.0)));
+        int delta = (int) Math.round(adjustment);
+        delta = Math.max(-maxAdjust, Math.min(maxAdjust, delta));
+
+        if (delta == 0) {
+            return;
         }
+
+        if (delta > 0 && !isIncreaseStable(now)) {
+            return;
+        }
+
+        adjustViewDistance(delta, config.getViewDistanceMin(), config.getViewDistanceMax());
+    }
+
+    private double applyAggressiveLowering(double error, double adjustment, int sampleWindow) {
+        if (error <= 0 || adjustment >= 0) {
+            return adjustment;
+        }
+        double playersFactor = loadFactor(
+                tracker.averagePlayers(sampleWindow),
+                tracker.averagePlayers(Math.max(300, sampleWindow * 4))
+        );
+        double chunksFactor = loadFactor(
+                tracker.averageChunks(sampleWindow),
+                tracker.averageChunks(Math.max(300, sampleWindow * 4))
+        );
+        double entitiesFactor = loadFactor(
+                tracker.averageEntities(sampleWindow),
+                tracker.averageEntities(Math.max(300, sampleWindow * 4))
+        );
+        double boost = 1.0 + Math.min(1.0, playersFactor + chunksFactor + entitiesFactor);
+        return adjustment * boost;
+    }
+
+    private double loadFactor(double current, double baseline) {
+        if (current <= 0 || baseline <= 0) {
+            return 0.0;
+        }
+        double ratio = current / baseline;
+        if (ratio <= 1.1) {
+            return 0.0;
+        }
+        return Math.min(0.5, (ratio - 1.1) * 0.5);
+    }
+
+    private boolean isIncreaseStable(Instant now) {
+        if (belowTargetSince == null) {
+            return false;
+        }
+        long stableSeconds = ChronoUnit.SECONDS.between(belowTargetSince, now);
+        return stableSeconds >= config.getViewDistanceIncreaseStableSeconds();
     }
 
     private void adjustViewDistance(int delta, int min, int max) {
@@ -82,19 +142,20 @@ public class ViewDistanceOptimizer implements Runnable {
         }
         if (changed) {
             lastChange = Instant.now();
-            plugin.getLogger().info("Adjusted view distance by " + delta + " due to MSPT trend.");
+            plugin.getLogger().info("Adjusted view distance by " + delta + " based on MSPT control.");
         }
     }
 
     public ViewDistanceStatus getStatusSnapshot() {
         int sampleWindow = Math.max(5, config.getViewDistanceSampleWindowSeconds());
-        double avgMspt = tracker.averageMspt(sampleWindow);
-        boolean rapidIncrease = isRapidMsptIncrease();
-        boolean increaseRecommended = avgMspt > 0 && avgMspt <= config.getViewDistanceLowMspt();
-        boolean decreaseRecommended = avgMspt >= config.getViewDistanceHighMspt() || rapidIncrease;
+        PerformanceTracker.MsptEwmaTrend ewmaTrend = tracker.msptEwmaTrend(sampleWindow, config.getViewDistanceEwmaAlpha());
+        double targetMspt = config.getViewDistanceTargetMspt();
+        double error = ewmaTrend.ewmaMspt() - targetMspt;
+        boolean increaseRecommended = error < 0 && isIncreaseStable(Instant.now());
+        boolean decreaseRecommended = error > 0 || ewmaTrend.trendPerSecond() > STABLE_TREND_THRESHOLD;
         long cooldownRemaining = cooldownRemainingSeconds();
         int currentViewDistance = currentViewDistance();
-        int predictedIncrease = increaseRecommended ? predictViewDistanceIncrease(currentViewDistance) : 0;
+        int predictedIncrease = increaseRecommended ? predictViewDistanceIncrease(currentViewDistance, targetMspt) : 0;
         int predictedChunks = increaseRecommended
                 ? predictedAdditionalChunks(currentViewDistance, predictedIncrease)
                 : 0;
@@ -108,43 +169,7 @@ public class ViewDistanceOptimizer implements Runnable {
         );
     }
 
-    private int computeIncreaseDelta(int step) {
-        int maxMultiplier = Math.max(1, config.getViewDistanceMaxStepMultiplier());
-        int currentViewDistance = currentViewDistance();
-        int predictedIncrease = predictViewDistanceIncrease(currentViewDistance);
-        int desired = predictedIncrease > 0 ? predictedIncrease : step;
-        int desiredSteps = Math.max(1, (int) Math.ceil((double) desired / step));
-        int steps = Math.min(maxMultiplier, desiredSteps);
-        int delta = step * steps;
-        if (predictedIncrease > 0) {
-            delta = Math.min(delta, predictedIncrease);
-        }
-        return Math.max(step, delta);
-    }
-
-    private int computeDecreaseMultiplier(double avgMspt, boolean rapidIncrease) {
-        int maxMultiplier = Math.max(1, config.getViewDistanceMaxStepMultiplier());
-        int multiplier = rapidIncrease ? 2 : 1;
-        if (avgMspt > config.getViewDistanceHighMspt()) {
-            double over = avgMspt - config.getViewDistanceHighMspt();
-            int extra = (int) Math.floor(over / Math.max(1.0, config.getViewDistanceOverageMsptPerStep()));
-            multiplier = Math.max(multiplier, 1 + extra);
-        }
-        return Math.min(maxMultiplier, multiplier);
-    }
-
-    private boolean isRapidMsptIncrease() {
-        int rapidWindow = Math.max(3, config.getViewDistanceRapidSampleWindowSeconds());
-        int baselineWindow = Math.max(rapidWindow + 1, config.getViewDistanceRapidBaselineWindowSeconds());
-        double rapidAvg = tracker.averageMspt(rapidWindow);
-        double baselineAvg = tracker.averageMspt(baselineWindow);
-        if (rapidAvg <= 0 || baselineAvg <= 0) {
-            return false;
-        }
-        return (rapidAvg - baselineAvg) >= config.getViewDistanceRapidMsptIncrease();
-    }
-
-    private int predictViewDistanceIncrease(int currentViewDistance) {
+    private int predictViewDistanceIncrease(int currentViewDistance, double targetMspt) {
         int historySeconds = config.getLongTermSampleWindowSeconds();
         List<PerformanceSample> history = tracker.getSamplesSinceSeconds(historySeconds);
         if (history.isEmpty()) {
@@ -156,7 +181,7 @@ public class ViewDistanceOptimizer implements Runnable {
                         Collectors.averagingDouble(PerformanceSample::mspt)
                 ));
         int maxAllowed = avgMsptByViewDistance.entrySet().stream()
-                .filter(entry -> entry.getValue() > 0 && entry.getValue() <= config.getViewDistanceLowMspt())
+                .filter(entry -> entry.getValue() > 0 && entry.getValue() <= targetMspt)
                 .map(Map.Entry::getKey)
                 .max(Integer::compareTo)
                 .orElse(currentViewDistance);

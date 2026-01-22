@@ -42,6 +42,28 @@ public class PerformanceTracker {
         return samples.peekLast();
     }
 
+    public MsptEwmaTrend msptEwmaTrend(int seconds, double alpha) {
+        List<PerformanceSample> windowSamples = getSamplesSinceSeconds(seconds).stream()
+                .sorted(java.util.Comparator.comparing(PerformanceSample::timestamp))
+                .toList();
+        if (windowSamples.isEmpty()) {
+            return new MsptEwmaTrend(0.0, 0.0);
+        }
+        double clampedAlpha = Math.max(0.05, Math.min(1.0, alpha));
+        double ewma = windowSamples.get(0).mspt();
+        double firstEwma = ewma;
+        Instant firstTimestamp = windowSamples.get(0).timestamp();
+        Instant lastTimestamp = firstTimestamp;
+        for (int i = 1; i < windowSamples.size(); i++) {
+            PerformanceSample sample = windowSamples.get(i);
+            ewma = clampedAlpha * sample.mspt() + (1.0 - clampedAlpha) * ewma;
+            lastTimestamp = sample.timestamp();
+        }
+        double durationSeconds = Math.max(1.0, java.time.Duration.between(firstTimestamp, lastTimestamp).toMillis() / 1000.0);
+        double trendPerSecond = (ewma - firstEwma) / durationSeconds;
+        return new MsptEwmaTrend(ewma, trendPerSecond);
+    }
+
     public StatsWindow statsWindow(int seconds, java.util.function.ToDoubleFunction<PerformanceSample> extractor) {
         List<PerformanceSample> windowSamples = getSamplesSinceSeconds(seconds);
         return StatsWindow.fromSamples(windowSamples, extractor);
@@ -89,5 +111,8 @@ public class PerformanceTracker {
             sum += value;
         }
         return sum / stats.length;
+    }
+
+    public record MsptEwmaTrend(double ewmaMspt, double trendPerSecond) {
     }
 }
