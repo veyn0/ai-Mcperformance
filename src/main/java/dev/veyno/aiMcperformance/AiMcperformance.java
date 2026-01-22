@@ -11,6 +11,7 @@ import dev.veyno.aiMcperformance.monitor.MonitorListener;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceOptimizer;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
+import java.time.Instant;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
@@ -26,7 +27,7 @@ public final class AiMcperformance extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         performanceConfig = new PerformanceConfig(getConfig());
-        tracker = new PerformanceTracker(performanceConfig.getMaxSampleWindowSeconds());
+        tracker = new PerformanceTracker(performanceConfig.getLongTermSampleWindowSeconds());
         pterodactylMetricsService = new PterodactylMetricsService(this, performanceConfig);
         pterodactylMetricsService.start();
         pterodactylMetricsService.schedule();
@@ -40,7 +41,7 @@ public final class AiMcperformance extends JavaPlugin {
         }
         getServer().getPluginManager().registerEvents(new MonitorListener(bossBarMonitor), this);
         scheduleSampling();
-        new ViewDistanceOptimizer(this, performanceConfig, tracker).schedule();
+        viewDistanceOptimizer.schedule();
 
     }
 
@@ -62,10 +63,25 @@ public final class AiMcperformance extends JavaPlugin {
             int chunks = Bukkit.getWorlds().stream()
                     .mapToInt(world -> world.getLoadedChunks().length)
                     .sum();
+            int viewDistance = (int) Math.round(Bukkit.getWorlds().stream()
+                    .mapToInt(World::getViewDistance)
+                    .average()
+                    .orElse(0.0));
             MemoryUsage heap = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
             long usedRam = heap.getUsed();
             double cpuUsage = pterodactylMetricsService.getCpuUsage();
-            tracker.addSample(new PerformanceSample(mspt, tps, entities, chunks, usedRam, cpuUsage));
+            int players = Bukkit.getOnlinePlayers().size();
+            tracker.addSample(new PerformanceSample(
+                    Instant.now(),
+                    mspt,
+                    tps,
+                    entities,
+                    chunks,
+                    usedRam,
+                    cpuUsage,
+                    viewDistance,
+                    players
+            ));
             bossBarMonitor.updateAll();
         }, intervalSeconds * 20L, intervalSeconds * 20L);
     }

@@ -17,6 +17,13 @@ public class PerformanceConfig {
         return config.getInt("sampling.max-window-seconds", 300);
     }
 
+    public int getLongTermSampleWindowSeconds() {
+        int seconds = config.getInt("sampling.long-window-seconds", 172800);
+        int min = 86400;
+        int max = 259200;
+        return Math.max(min, Math.min(max, seconds));
+    }
+
     public String getBossBarTitleFormat() {
         return config.getString("bossbar.title-format", "{metric}: {values}");
     }
@@ -75,5 +82,29 @@ public class PerformanceConfig {
 
     public int getViewDistanceCooldownSeconds() {
         return config.getInt("view-distance.cooldown-seconds", 60);
+    }
+
+    public int getViewDistanceMaxStepMultiplier() {
+        return config.getInt("view-distance.max-step-multiplier", 4);
+    }
+
+    public double getViewDistanceOverageMsptPerStep() {
+        return config.getDouble("view-distance.overage-mspt-per-step", 5.0);
+    }
+
+    public double getViewDistanceRapidMsptIncrease() {
+        return config.getDouble("view-distance.rapid-mspt-increase", 15.0);
+    }
+
+    public int getViewDistanceRapidSampleWindowSeconds() {
+        return config.getInt("view-distance.rapid-sample-window-seconds", 10);
+    }
+
+    public int getViewDistanceRapidBaselineWindowSeconds() {
+        return config.getInt("view-distance.rapid-baseline-window-seconds", 60);
+    }
+
+    public int getViewDistanceRapidCooldownSeconds() {
+        return config.getInt("view-distance.rapid-cooldown-seconds", 15);
     }
 }

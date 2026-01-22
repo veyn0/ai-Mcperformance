@@ -3,6 +3,8 @@ sampling:
   interval-seconds: 1
   # Maximales Zeitfenster (in Sekunden), das für gleitende Mittelwerte genutzt wird.
   max-window-seconds: 300
+  # Langfristige Speicherung der Daten (24 bis 72 Stunden empfohlen).
+  long-window-seconds: 172800
 
 bossbar:
   # Format der BossBar-Anzeige. {metric} = Name der Metrik, {values} = aktuelle Werte.
@@ -29,12 +31,21 @@ view-distance:
   max: 12
   # Schrittweite, mit der die Sichtweite erhöht/gesenkt wird.
   step: 1
+  # Maximale Schritt-Multiplikatoren pro Anpassung (erlaubt größere Sprünge als step).
+  max-step-multiplier: 4
   # Ab dieser MSPT wird die Sichtweite reduziert.
   high-mspt: 50.0
   # Unterhalb dieser MSPT wird die Sichtweite erhöht.
   low-mspt: 35.0
+  # Zusätzliche MSPT pro Schritt bei Überschreitungen des High-MSPT-Werts.
+  overage-mspt-per-step: 5.0
   # Zeitfenster (in Sekunden) zur Berechnung des MSPT-Durchschnitts.
   sample-window-seconds: 60
+  # Reagiert auf schnelle MSPT-Anstiege auch ohne Thresholds.
+  rapid-mspt-increase: 15.0
+  rapid-sample-window-seconds: 10
+  rapid-baseline-window-seconds: 60
+  rapid-cooldown-seconds: 15
   # Prüfintervall (in Sekunden) für die Anpassung.
   check-interval-seconds: 15
   # Abklingzeit (in Sekunden) nach einer Anpassung.

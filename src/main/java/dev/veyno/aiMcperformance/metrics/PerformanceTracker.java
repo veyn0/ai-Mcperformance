@@ -1,59 +1,68 @@
 package dev.veyno.aiMcperformance.metrics;
 
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
 public class PerformanceTracker {
     private final Deque<PerformanceSample> samples = new ArrayDeque<>();
-    private final int maxSamples;
+    private final int maxWindowSeconds;
 
-    public PerformanceTracker(int maxSamples) {
-        this.maxSamples = Math.max(1, maxSamples);
+    public PerformanceTracker(int maxWindowSeconds) {
+        this.maxWindowSeconds = Math.max(1, maxWindowSeconds);
     }
 
     public void addSample(PerformanceSample sample) {
         samples.addLast(sample);
-        while (samples.size() > maxSamples) {
+        Instant cutoff = sample.timestamp().minusSeconds(maxWindowSeconds);
+        while (!samples.isEmpty() && samples.getFirst().timestamp().isBefore(cutoff)) {
             samples.removeFirst();
         }
     }
 
-    public List<PerformanceSample> getLastSamples(int count) {
-        int target = Math.max(0, count);
-        if (samples.isEmpty() || target <= 0) {
-            return List.of();
-        }
-        int skip = Math.max(0, samples.size() - target);
-        return samples.stream().skip(skip).toList();
+    public List<PerformanceSample> getSamplesSinceSeconds(int seconds) {
+        int targetSeconds = Math.max(1, seconds);
+        Instant cutoff = Instant.now().minusSeconds(targetSeconds);
+        return samples.stream()
+                .filter(sample -> !sample.timestamp().isBefore(cutoff))
+                .toList();
+    }
+
+    public PerformanceSample latestSample() {
+        return samples.peekLast();
     }
 
     public double averageMspt(int seconds) {
-        return average(samplesForSeconds(seconds).stream().mapToDouble(PerformanceSample::mspt));
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::mspt));
     }
 
     public double averageTps(int seconds) {
-        return average(samplesForSeconds(seconds).stream().mapToDouble(PerformanceSample::tps));
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::tps));
     }
 
     public double averageCpu(int seconds) {
-        return average(samplesForSeconds(seconds).stream().mapToDouble(PerformanceSample::cpuUsagePercent));
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::cpuUsagePercent));
     }
 
     public double averageRamBytes(int seconds) {
-        return average(samplesForSeconds(seconds).stream().mapToDouble(PerformanceSample::usedRamBytes));
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::usedRamBytes));
     }
 
     public double averageEntities(int seconds) {
-        return average(samplesForSeconds(seconds).stream().mapToDouble(PerformanceSample::entities));
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::entities));
     }
 
     public double averageChunks(int seconds) {
-        return average(samplesForSeconds(seconds).stream().mapToDouble(PerformanceSample::chunks));
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::chunks));
     }
 
-    private List<PerformanceSample> samplesForSeconds(int seconds) {
-        return getLastSamples(seconds);
+    public double averageViewDistance(int seconds) {
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::viewDistance));
+    }
+
+    public double averagePlayers(int seconds) {
+        return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::players));
     }
 
     private double average(java.util.stream.DoubleStream stream) {
