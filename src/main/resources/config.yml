@@ -6,6 +6,16 @@ sampling:
   # Langfristige Speicherung der Daten (24 bis 72 Stunden empfohlen).
   long-window-seconds: 172800
 
+storage:
+  # Typ der Persistenz: csv oder none.
+  type: "csv"
+  # Pfad relativ zum Plugin-Ordner oder absolut.
+  path: "samples/metrics.csv"
+  # Wie oft Samples in den Storage geschrieben werden.
+  flush-interval-seconds: 30
+  # Beim Start bestehende Samples laden.
+  restore-on-start: true
+
 bossbar:
   # Format der BossBar-Anzeige. {metric} = Name der Metrik, {values} = aktuelle Werte.
   title-format: "{metric}: {values}"
