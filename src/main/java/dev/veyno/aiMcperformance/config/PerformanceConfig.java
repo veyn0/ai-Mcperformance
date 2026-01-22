@@ -44,6 +44,22 @@ public class PerformanceConfig {
         return config.getString("bossbar.title-format", "{metric}: {values}");
     }
 
+    public boolean isBossBarStatsEnabled() {
+        return config.getBoolean("bossbar.use-rollup-stats", false);
+    }
+
+    public int getReportWindowSeconds() {
+        return config.getInt("report.window-seconds", 300);
+    }
+
+    public double getReportSpikeMsptThreshold() {
+        return config.getDouble("report.spike-mspt", 50.0);
+    }
+
+    public double getReportCorrelationThreshold() {
+        return config.getDouble("report.correlation-threshold", 0.5);
+    }
+
     public boolean isPterodactylEnabled() {
         return config.getBoolean("pterodactyl.enabled", false);
     }

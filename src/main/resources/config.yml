@@ -19,6 +19,16 @@ storage:
 bossbar:
   # Format der BossBar-Anzeige. {metric} = Name der Metrik, {values} = aktuelle Werte.
   title-format: "{metric}: {values}"
+  # Nutze Rollup-Statistiken (Median/P95) statt Mittelwerten in der BossBar.
+  use-rollup-stats: false
+
+report:
+  # Zeitfenster (in Sekunden) für den Report.
+  window-seconds: 300
+  # MSPT-Schwelle für Spike-Zählung.
+  spike-mspt: 50.0
+  # Mindestkorrelation für Hinweis (0-1).
+  correlation-threshold: 0.5
 
 pterodactyl:
   # Aktiviert das Auslesen der CPU-Auslastung via Pterodactyl (benötigt Pterodactyl4J).

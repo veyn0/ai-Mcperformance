@@ -42,6 +42,11 @@ public class PerformanceTracker {
         return samples.peekLast();
     }
 
+    public StatsWindow statsWindow(int seconds, java.util.function.ToDoubleFunction<PerformanceSample> extractor) {
+        List<PerformanceSample> windowSamples = getSamplesSinceSeconds(seconds);
+        return StatsWindow.fromSamples(windowSamples, extractor);
+    }
+
     public double averageMspt(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::mspt));
     }

@@ -4,8 +4,8 @@ main: dev.veyno.aiMcperformance.AiMcperformance
 api-version: '1.21'
 commands:
   performance:
-    description: Zeigt Performance-Monitoring BossBars an oder aus.
-    usage: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle>
+    description: Zeigt Performance-Monitoring BossBars an oder erstellt einen Report.
+    usage: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle> | /performance report
     permission: ai-mcperformance.command.performance
 permissions:
   ai-mcperformance.command.performance:

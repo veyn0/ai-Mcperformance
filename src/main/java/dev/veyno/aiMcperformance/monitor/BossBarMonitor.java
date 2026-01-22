@@ -4,6 +4,7 @@ import dev.veyno.aiMcperformance.config.PerformanceConfig;
 import dev.veyno.aiMcperformance.metrics.MetricType;
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
+import dev.veyno.aiMcperformance.metrics.StatsWindow;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceStatus;
 import java.text.DecimalFormat;
 import java.util.EnumMap;
@@ -101,12 +102,14 @@ public class BossBarMonitor {
 
     private String formatTitle(MetricType type) {
         String values = switch (type) {
-            case MSPT -> formatWindowValues("ms", tracker::averageMspt);
-            case TPS -> formatWindowValues("", tracker::averageTps);
-            case ENTITIES -> formatWindowValues("", tracker::averageEntities);
-            case RAM -> formatWindowValues("MB", seconds -> tracker.averageRamBytes(seconds) / (1024.0 * 1024.0));
-            case CPU -> formatWindowValues("%", tracker::averageCpu);
-            case CHUNKS -> formatWindowValues("", tracker::averageChunks);
+            case MSPT -> formatWindowValues("ms", PerformanceSample::mspt, tracker::averageMspt);
+            case TPS -> formatWindowValues("", PerformanceSample::tps, tracker::averageTps);
+            case ENTITIES -> formatWindowValues("", sample -> sample.entities(), tracker::averageEntities);
+            case RAM -> formatWindowValues("MB",
+                    sample -> sample.usedRamBytes() / (1024.0 * 1024.0),
+                    seconds -> tracker.averageRamBytes(seconds) / (1024.0 * 1024.0));
+            case CPU -> formatWindowValues("%", PerformanceSample::cpuUsagePercent, tracker::averageCpu);
+            case CHUNKS -> formatWindowValues("", sample -> sample.chunks(), tracker::averageChunks);
             case VIEW_DISTANCE -> formatViewDistanceStatus();
         };
         return config.getBossBarTitleFormat()
@@ -114,12 +117,41 @@ public class BossBarMonitor {
                 .replace("{values}", values);
     }
 
-    private String formatWindowValues(String unit, java.util.function.IntToDoubleFunction function) {
+    private String formatWindowValues(
+            String unit,
+            java.util.function.ToDoubleFunction<PerformanceSample> extractor,
+            java.util.function.IntToDoubleFunction fallbackAverage
+    ) {
+        if (!config.isBossBarStatsEnabled()) {
+            return formatAverageWindowValues(unit, fallbackAverage);
+        }
+        String ten = formatStatsWindow(10, unit, extractor);
+        String thirty = formatStatsWindow(30, unit, extractor);
+        String minute = formatStatsWindow(60, unit, extractor);
+        String five = formatStatsWindow(300, unit, extractor);
+        return "10s " + ten + " | 30s " + thirty + " | 1m " + minute + " | 5m " + five;
+    }
+
+    private String formatAverageWindowValues(String unit, java.util.function.IntToDoubleFunction function) {
         String ten = format(function.applyAsDouble(10), unit);
         String thirty = format(function.applyAsDouble(30), unit);
         String minute = format(function.applyAsDouble(60), unit);
         String five = format(function.applyAsDouble(300), unit);
         return "10s " + ten + " | 30s " + thirty + " | 1m " + minute + " | 5m " + five;
+    }
+
+    private String formatStatsWindow(
+            int seconds,
+            String unit,
+            java.util.function.ToDoubleFunction<PerformanceSample> extractor
+    ) {
+        StatsWindow stats = tracker.statsWindow(seconds, extractor);
+        if (!stats.hasData()) {
+            return format(0.0, unit);
+        }
+        String median = format(stats.median(), unit);
+        String p95 = format(stats.p95(), unit);
+        return median + "/" + p95;
     }
 
     private String format(double value, String unit) {
