@@ -1,24 +1,41 @@
 sampling:
+  # Wie oft die Messwerte aufgenommen werden (je kleiner, desto reaktiver).
   interval-seconds: 1
+  # Maximales Zeitfenster (in Sekunden), das für gleitende Mittelwerte genutzt wird.
   max-window-seconds: 300
 
 bossbar:
+  # Format der BossBar-Anzeige. {metric} = Name der Metrik, {values} = aktuelle Werte.
   title-format: "{metric}: {values}"
 
 pterodactyl:
+  # Aktiviert das Auslesen der CPU-Auslastung via Pterodactyl (benötigt Pterodactyl4J).
   enabled: false
+  # URL des Panels, z. B. https://panel.example.com
   panel-url: "https://panel.example.com"
+  # API-Key mit Leserechten für den Server.
   api-key: "ptla_your_api_key"
+  # Server-Identifier (UUID oder kurzer Identifier) aus dem Panel.
   server-identifier: "server-uuid-or-short-id"
+  # Aktualisierungsintervall für Pterodactyl-Daten.
   refresh-seconds: 15
 
 view-distance:
+  # Dynamische Sichtweite basierend auf MSPT aktivieren.
   enabled: true
+  # Untere Grenze der Sichtweite.
   min: 4
+  # Obere Grenze der Sichtweite.
   max: 12
+  # Schrittweite, mit der die Sichtweite erhöht/gesenkt wird.
   step: 1
+  # Ab dieser MSPT wird die Sichtweite reduziert.
   high-mspt: 50.0
+  # Unterhalb dieser MSPT wird die Sichtweite erhöht.
   low-mspt: 35.0
+  # Zeitfenster (in Sekunden) zur Berechnung des MSPT-Durchschnitts.
   sample-window-seconds: 60
+  # Prüfintervall (in Sekunden) für die Anpassung.
   check-interval-seconds: 15
+  # Abklingzeit (in Sekunden) nach einer Anpassung.
   cooldown-seconds: 60
