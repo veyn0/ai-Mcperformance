@@ -1,6 +1,7 @@
 package dev.veyno.aiMcperformance;
 
 import dev.veyno.aiMcperformance.command.PerformanceCommand;
+import dev.veyno.aiMcperformance.command.PerformanceTabCompleter;
 import dev.veyno.aiMcperformance.config.PerformanceConfig;
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
@@ -12,6 +13,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class AiMcperformance extends JavaPlugin {
@@ -29,7 +31,13 @@ public final class AiMcperformance extends JavaPlugin {
         pterodactylMetricsService.start();
         pterodactylMetricsService.schedule();
         bossBarMonitor = new BossBarMonitor(this, performanceConfig, tracker);
-        getCommand("performance").setExecutor(new PerformanceCommand(bossBarMonitor));
+        PluginCommand performanceCommand = getCommand("performance");
+        if (performanceCommand != null) {
+            performanceCommand.setExecutor(new PerformanceCommand(bossBarMonitor));
+            performanceCommand.setTabCompleter(new PerformanceTabCompleter());
+        } else {
+            getLogger().warning("Command 'performance' not found in plugin.yml.");
+        }
         getServer().getPluginManager().registerEvents(new MonitorListener(bossBarMonitor), this);
         scheduleSampling();
         new ViewDistanceOptimizer(this, performanceConfig, tracker).schedule();
