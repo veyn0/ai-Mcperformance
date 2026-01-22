@@ -8,8 +8,8 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.util.StringUtil;
 
 public class PerformanceTabCompleter implements TabCompleter {
-    private static final List<String> SUBCOMMANDS = List.of("monitor");
-    private static final List<String> METRICS = List.of("mspt", "tps", "entities", "ram", "cpu", "chunks");
+    private static final List<String> SUBCOMMANDS = List.of("monitor", "report");
+    private static final List<String> METRICS = List.of("mspt", "tps", "entities", "ram", "cpu", "chunks", "viewdistance");
     private static final List<String> ACTIONS = List.of("on", "off", "toggle");
 
     @Override

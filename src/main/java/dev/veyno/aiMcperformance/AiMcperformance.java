@@ -45,7 +45,7 @@ public final class AiMcperformance extends JavaPlugin {
         bossBarMonitor = new BossBarMonitor(this, performanceConfig, tracker, viewDistanceOptimizer::getStatusSnapshot);
         PluginCommand performanceCommand = getCommand("performance");
         if (performanceCommand != null) {
-            performanceCommand.setExecutor(new PerformanceCommand(bossBarMonitor));
+            performanceCommand.setExecutor(new PerformanceCommand(bossBarMonitor, tracker, performanceConfig));
             performanceCommand.setTabCompleter(new PerformanceTabCompleter());
         } else {
             getLogger().warning("Command 'performance' not found in plugin.yml.");
