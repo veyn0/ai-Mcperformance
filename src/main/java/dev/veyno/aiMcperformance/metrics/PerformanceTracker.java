@@ -21,6 +21,15 @@ public class PerformanceTracker {
         }
     }
 
+    public void restoreSamples(List<PerformanceSample> restoredSamples) {
+        if (restoredSamples == null || restoredSamples.isEmpty()) {
+            return;
+        }
+        restoredSamples.stream()
+                .sorted(java.util.Comparator.comparing(PerformanceSample::timestamp))
+                .forEach(this::addSample);
+    }
+
     public List<PerformanceSample> getSamplesSinceSeconds(int seconds) {
         int targetSeconds = Math.max(1, seconds);
         Instant cutoff = Instant.now().minusSeconds(targetSeconds);

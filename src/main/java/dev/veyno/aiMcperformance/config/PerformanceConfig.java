@@ -24,6 +24,22 @@ public class PerformanceConfig {
         return Math.max(min, Math.min(max, seconds));
     }
 
+    public String getStorageType() {
+        return config.getString("storage.type", "csv");
+    }
+
+    public String getStoragePath() {
+        return config.getString("storage.path", "samples/metrics.csv");
+    }
+
+    public int getStorageFlushIntervalSeconds() {
+        return config.getInt("storage.flush-interval-seconds", 30);
+    }
+
+    public boolean isStorageRestoreOnStartEnabled() {
+        return config.getBoolean("storage.restore-on-start", true);
+    }
+
     public String getBossBarTitleFormat() {
         return config.getString("bossbar.title-format", "{metric}: {values}");
     }
