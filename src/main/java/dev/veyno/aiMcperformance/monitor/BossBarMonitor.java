@@ -134,10 +134,15 @@ public class BossBarMonitor {
                 status != null ? status.cooldownRemainingSeconds() : 0);
         String down = formatDirection("Runter", status != null && status.decreaseRecommended(),
                 status != null ? status.cooldownRemainingSeconds() : 0);
-        String prediction = status != null && status.predictedChunkIncrease() > 0
-                ? " | +" + status.predictedChunkIncrease() + " Chunks"
+        int predictedViewDistance = status != null ? status.predictedViewDistanceIncrease() : 0;
+        int predictedChunks = status != null ? status.predictedChunkIncrease() : 0;
+        String prediction = predictedViewDistance > 0
+                ? " | +" + predictedViewDistance + " Sichtweite"
                 : "";
-        return "Aktuell " + current + " | " + up + " | " + down + prediction;
+        String chunkPrediction = predictedChunks > 0
+                ? " | +" + predictedChunks + " Chunks"
+                : "";
+        return "Aktuell " + current + " | " + up + " | " + down + prediction + chunkPrediction;
     }
 
     private int latestViewDistance() {

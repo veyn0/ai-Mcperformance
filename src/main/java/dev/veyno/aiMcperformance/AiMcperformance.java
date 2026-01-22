@@ -22,6 +22,7 @@ public final class AiMcperformance extends JavaPlugin {
     private BossBarMonitor bossBarMonitor;
     private PerformanceConfig performanceConfig;
     private PterodactylMetricsService pterodactylMetricsService;
+    private ViewDistanceOptimizer viewDistanceOptimizer;
 
     @Override
     public void onEnable() {
@@ -31,7 +32,8 @@ public final class AiMcperformance extends JavaPlugin {
         pterodactylMetricsService = new PterodactylMetricsService(this, performanceConfig);
         pterodactylMetricsService.start();
         pterodactylMetricsService.schedule();
-        bossBarMonitor = new BossBarMonitor(this, performanceConfig, tracker);
+        viewDistanceOptimizer = new ViewDistanceOptimizer(this, performanceConfig, tracker);
+        bossBarMonitor = new BossBarMonitor(this, performanceConfig, tracker, viewDistanceOptimizer::getStatusSnapshot);
         PluginCommand performanceCommand = getCommand("performance");
         if (performanceCommand != null) {
             performanceCommand.setExecutor(new PerformanceCommand(bossBarMonitor));
