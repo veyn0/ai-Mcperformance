@@ -22,7 +22,7 @@ public class PerformanceCommand implements CommandExecutor {
             return true;
         }
         if (args.length < 2 || !"monitor".equalsIgnoreCase(args[0])) {
-            sender.sendMessage("Verwendung: /performance monitor <mspt|tps|entities|ram|cpu|chunks> <on|off|toggle>");
+            sender.sendMessage("Verwendung: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle>");
             return true;
         }
         MetricType type = parseType(args[1]);
@@ -37,7 +37,7 @@ public class PerformanceCommand implements CommandExecutor {
             case "off", "disable" -> enable = false;
             case "toggle" -> enable = !monitor.isEnabled(player, type);
             default -> {
-                sender.sendMessage("Verwendung: /performance monitor <mspt|tps|entities|ram|cpu|chunks> <on|off|toggle>");
+                sender.sendMessage("Verwendung: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle>");
                 return true;
             }
         }
@@ -54,6 +54,7 @@ public class PerformanceCommand implements CommandExecutor {
             case "ram", "memory" -> MetricType.RAM;
             case "cpu" -> MetricType.CPU;
             case "chunks", "chunk" -> MetricType.CHUNKS;
+            case "viewdistance", "view", "vd" -> MetricType.VIEW_DISTANCE;
             default -> null;
         };
     }

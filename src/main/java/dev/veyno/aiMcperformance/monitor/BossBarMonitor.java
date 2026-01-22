@@ -2,11 +2,14 @@ package dev.veyno.aiMcperformance.monitor;
 
 import dev.veyno.aiMcperformance.config.PerformanceConfig;
 import dev.veyno.aiMcperformance.metrics.MetricType;
+import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
+import dev.veyno.aiMcperformance.optimization.ViewDistanceStatus;
 import java.text.DecimalFormat;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.bukkit.Bukkit;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
@@ -20,12 +23,19 @@ public class BossBarMonitor {
     private final Plugin plugin;
     private final PerformanceConfig config;
     private final PerformanceTracker tracker;
+    private final Supplier<ViewDistanceStatus> viewDistanceStatusSupplier;
     private final Map<UUID, EnumMap<MetricType, BossBar>> bars = new java.util.HashMap<>();
 
-    public BossBarMonitor(Plugin plugin, PerformanceConfig config, PerformanceTracker tracker) {
+    public BossBarMonitor(
+            Plugin plugin,
+            PerformanceConfig config,
+            PerformanceTracker tracker,
+            Supplier<ViewDistanceStatus> viewDistanceStatusSupplier
+    ) {
         this.plugin = plugin;
         this.config = config;
         this.tracker = tracker;
+        this.viewDistanceStatusSupplier = viewDistanceStatusSupplier;
     }
 
     public void toggle(Player player, MetricType type, boolean enabled) {
@@ -97,6 +107,7 @@ public class BossBarMonitor {
             case RAM -> formatWindowValues("MB", seconds -> tracker.averageRamBytes(seconds) / (1024.0 * 1024.0));
             case CPU -> formatWindowValues("%", tracker::averageCpu);
             case CHUNKS -> formatWindowValues("", tracker::averageChunks);
+            case VIEW_DISTANCE -> formatViewDistanceStatus();
         };
         return config.getBossBarTitleFormat()
                 .replace("{metric}", type.getDisplayName())
@@ -114,5 +125,33 @@ public class BossBarMonitor {
     private String format(double value, String unit) {
         String formatted = unit.isEmpty() ? ZERO_DECIMAL.format(value) : ONE_DECIMAL.format(value);
         return formatted + unit;
+    }
+
+    private String formatViewDistanceStatus() {
+        ViewDistanceStatus status = viewDistanceStatusSupplier != null ? viewDistanceStatusSupplier.get() : null;
+        int current = status != null ? status.currentViewDistance() : latestViewDistance();
+        String up = formatDirection("Hoch", status != null && status.increaseRecommended(),
+                status != null ? status.cooldownRemainingSeconds() : 0);
+        String down = formatDirection("Runter", status != null && status.decreaseRecommended(),
+                status != null ? status.cooldownRemainingSeconds() : 0);
+        String prediction = status != null && status.predictedChunkIncrease() > 0
+                ? " | +" + status.predictedChunkIncrease() + " Chunks"
+                : "";
+        return "Aktuell " + current + " | " + up + " | " + down + prediction;
+    }
+
+    private int latestViewDistance() {
+        PerformanceSample sample = tracker.latestSample();
+        return sample != null ? sample.viewDistance() : 0;
+    }
+
+    private String formatDirection(String label, boolean recommended, long cooldownRemainingSeconds) {
+        if (!recommended) {
+            return label + ": blockiert";
+        }
+        if (cooldownRemainingSeconds > 0) {
+            return label + " in " + cooldownRemainingSeconds + "s";
+        }
+        return label + ": jetzt";
     }
 }

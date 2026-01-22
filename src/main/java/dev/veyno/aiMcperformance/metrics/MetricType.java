@@ -6,7 +6,8 @@ public enum MetricType {
     ENTITIES("Entities"),
     RAM("RAM"),
     CPU("CPU"),
-    CHUNKS("Chunks");
+    CHUNKS("Chunks"),
+    VIEW_DISTANCE("View Distance");
 
     private final String displayName;
 
