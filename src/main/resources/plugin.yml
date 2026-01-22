@@ -2,3 +2,12 @@ name: ai-mcperformance
 version: '1.0-SNAPSHOT'
 main: dev.veyno.aiMcperformance.AiMcperformance
 api-version: '1.21'
+commands:
+  performance:
+    description: Zeigt Performance-Monitoring BossBars an oder aus.
+    usage: /performance monitor <mspt|tps|entities|ram|cpu|chunks> <on|off|toggle>
+    permission: ai-mcperformance.command.performance
+permissions:
+  ai-mcperformance.command.performance:
+    description: Zugriff auf /performance monitor
+    default: op

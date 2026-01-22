@@ -1,0 +1,24 @@
+sampling:
+  interval-seconds: 1
+  max-window-seconds: 300
+
+bossbar:
+  title-format: "{metric}: {values}"
+
+pterodactyl:
+  enabled: false
+  panel-url: "https://panel.example.com"
+  api-key: "ptla_your_api_key"
+  server-identifier: "server-uuid-or-short-id"
+  refresh-seconds: 15
+
+view-distance:
+  enabled: true
+  min: 4
+  max: 12
+  step: 1
+  high-mspt: 50.0
+  low-mspt: 35.0
+  sample-window-seconds: 60
+  check-interval-seconds: 15
+  cooldown-seconds: 60
