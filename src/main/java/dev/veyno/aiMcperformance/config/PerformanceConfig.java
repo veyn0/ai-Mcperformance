@@ -1,6 +1,10 @@
 package dev.veyno.aiMcperformance.config;
 
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.SpawnCategory;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 public class PerformanceConfig {
     private final FileConfiguration config;
@@ -118,5 +122,108 @@ public class PerformanceConfig {
 
     public int getViewDistanceCooldownSeconds() {
         return config.getInt("view-distance.cooldown-seconds", 60);
+    }
+
+    public boolean isActionEngineEnabled() {
+        return config.getBoolean("actions.enabled", true);
+    }
+
+    public int getActionEngineCheckIntervalSeconds() {
+        return config.getInt("actions.check-interval-seconds", 15);
+    }
+
+    public int getActionEngineSampleWindowSeconds() {
+        return config.getInt("actions.sample-window-seconds", 30);
+    }
+
+    public double getActionMsptThreshold() {
+        return config.getDouble("actions.thresholds.mspt", 45.0);
+    }
+
+    public double getActionCpuThreshold() {
+        return config.getDouble("actions.thresholds.cpu", 85.0);
+    }
+
+    public int getActionEntityThreshold() {
+        return config.getInt("actions.thresholds.entities", 2500);
+    }
+
+    public double getActionMsptRecovery() {
+        return config.getDouble("actions.recovery.mspt", 38.0);
+    }
+
+    public double getActionCpuRecovery() {
+        return config.getDouble("actions.recovery.cpu", 70.0);
+    }
+
+    public int getActionEntityRecovery() {
+        return config.getInt("actions.recovery.entities", 2000);
+    }
+
+    public int getSimulationDistanceActionPriority() {
+        return config.getInt("actions.simulation-distance.priority", 30);
+    }
+
+    public int getSimulationDistanceActionCooldownSeconds() {
+        return config.getInt("actions.simulation-distance.cooldown-seconds", 120);
+    }
+
+    public int getSimulationDistanceActionTarget() {
+        return config.getInt("actions.simulation-distance.target", 5);
+    }
+
+    public int getSimulationDistanceActionMin() {
+        return config.getInt("actions.simulation-distance.min", 4);
+    }
+
+    public int getSimulationDistanceActionMax() {
+        return config.getInt("actions.simulation-distance.max", 10);
+    }
+
+    public int getEntityActivationRangeActionPriority() {
+        return config.getInt("actions.entity-activation-range.priority", 20);
+    }
+
+    public int getEntityActivationRangeActionCooldownSeconds() {
+        return config.getInt("actions.entity-activation-range.cooldown-seconds", 180);
+    }
+
+    public int getEntityActivationRangeActionTarget() {
+        return config.getInt("actions.entity-activation-range.target", 16);
+    }
+
+    public int getMobCapsActionPriority() {
+        return config.getInt("actions.mob-caps.priority", 10);
+    }
+
+    public int getMobCapsActionCooldownSeconds() {
+        return config.getInt("actions.mob-caps.cooldown-seconds", 180);
+    }
+
+    public Map<SpawnCategory, Integer> getMobCapsLimits() {
+        Map<SpawnCategory, Integer> limits = new EnumMap<>(SpawnCategory.class);
+        var section = config.getConfigurationSection("actions.mob-caps.limits");
+        if (section == null) {
+            return limits;
+        }
+        for (String key : section.getKeys(false)) {
+            SpawnCategory category = parseSpawnCategory(key);
+            if (category != null) {
+                limits.put(category, section.getInt(key));
+            }
+        }
+        return limits;
+    }
+
+    private SpawnCategory parseSpawnCategory(String key) {
+        if (key == null || key.isBlank()) {
+            return null;
+        }
+        String normalized = key.trim().toUpperCase().replace('-', '_');
+        try {
+            return SpawnCategory.valueOf(normalized);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 }
