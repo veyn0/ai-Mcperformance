@@ -63,3 +63,53 @@ view-distance:
   check-interval-seconds: 15
   # Abklingzeit (in Sekunden) nach einer Anpassung.
   cooldown-seconds: 60
+
+actions:
+  # Aktiviert automatische Performance-Aktionen.
+  enabled: true
+  # Prüfintervall (in Sekunden) für das Regelwerk.
+  check-interval-seconds: 15
+  # Zeitfenster (in Sekunden) für die Berechnung der Schwellenwerte.
+  sample-window-seconds: 30
+
+  thresholds:
+    # Schwellenwerte, ab denen Aktionen aktiviert werden.
+    mspt: 45.0
+    cpu: 85.0
+    entities: 2500
+
+  recovery:
+    # Werte, unter denen Aktionen wieder zurückgesetzt werden.
+    mspt: 38.0
+    cpu: 70.0
+    entities: 2000
+
+  simulation-distance:
+    # Priorität (höher = wichtiger).
+    priority: 30
+    # Abklingzeit zwischen erneuten Änderungen.
+    cooldown-seconds: 120
+    # Zielwert für die Simulationsdistanz während einer Aktion.
+    target: 5
+    min: 4
+    max: 10
+
+  entity-activation-range:
+    # Priorität (höher = wichtiger).
+    priority: 20
+    # Abklingzeit zwischen erneuten Änderungen.
+    cooldown-seconds: 180
+    # Zielwert für die Entity-Activation-Range.
+    target: 16
+
+  mob-caps:
+    # Priorität (höher = wichtiger).
+    priority: 10
+    # Abklingzeit zwischen erneuten Änderungen.
+    cooldown-seconds: 180
+    # Zielwerte pro Spawn-Kategorie.
+    limits:
+      monster: 35
+      animal: 10
+      ambient: 5
+      water-animal: 5

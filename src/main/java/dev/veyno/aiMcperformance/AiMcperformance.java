@@ -12,6 +12,10 @@ import dev.veyno.aiMcperformance.metrics.storage.PerformanceSampleStore;
 import dev.veyno.aiMcperformance.monitor.BossBarMonitor;
 import dev.veyno.aiMcperformance.monitor.MonitorListener;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceOptimizer;
+import dev.veyno.aiMcperformance.optimization.actions.ActionEngine;
+import dev.veyno.aiMcperformance.optimization.actions.EntityActivationRangeAction;
+import dev.veyno.aiMcperformance.optimization.actions.MobCapsAction;
+import dev.veyno.aiMcperformance.optimization.actions.SimulationDistanceAction;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 import java.nio.file.Path;
@@ -29,6 +33,7 @@ public final class AiMcperformance extends JavaPlugin {
     private PerformanceConfig performanceConfig;
     private PterodactylMetricsService pterodactylMetricsService;
     private ViewDistanceOptimizer viewDistanceOptimizer;
+    private ActionEngine actionEngine;
     private PerformanceSampleStore sampleStore;
 
     @Override
@@ -42,6 +47,11 @@ public final class AiMcperformance extends JavaPlugin {
         pterodactylMetricsService.start();
         pterodactylMetricsService.schedule();
         viewDistanceOptimizer = new ViewDistanceOptimizer(this, performanceConfig, tracker);
+        actionEngine = new ActionEngine(this, performanceConfig, tracker, List.of(
+                new SimulationDistanceAction(performanceConfig),
+                new EntityActivationRangeAction(performanceConfig),
+                new MobCapsAction(performanceConfig)
+        ));
         bossBarMonitor = new BossBarMonitor(this, performanceConfig, tracker, viewDistanceOptimizer::getStatusSnapshot);
         PluginCommand performanceCommand = getCommand("performance");
         if (performanceCommand != null) {
@@ -53,6 +63,7 @@ public final class AiMcperformance extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MonitorListener(bossBarMonitor), this);
         scheduleSampling();
         viewDistanceOptimizer.schedule();
+        actionEngine.schedule();
 
     }
 
@@ -63,6 +74,9 @@ public final class AiMcperformance extends JavaPlugin {
         }
         if (sampleStore != null) {
             sampleStore.flushNowAsync();
+        }
+        if (actionEngine != null) {
+            actionEngine.shutdown();
         }
     }
 
