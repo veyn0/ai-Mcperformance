@@ -7,10 +7,18 @@ import java.util.EnumMap;
 import java.util.Map;
 
 public class PerformanceConfig {
-    private final FileConfiguration config;
+    private FileConfiguration config;
 
     public PerformanceConfig(FileConfiguration config) {
         this.config = config;
+    }
+
+    public void reload(FileConfiguration config) {
+        this.config = config;
+    }
+
+    public boolean isSamplingEnabled() {
+        return config.getBoolean("sampling.enabled", true);
     }
 
     public int getSampleIntervalSeconds() {
@@ -32,6 +40,10 @@ public class PerformanceConfig {
         return config.getString("storage.type", "csv");
     }
 
+    public boolean isStorageEnabled() {
+        return config.getBoolean("storage.enabled", true);
+    }
+
     public String getStoragePath() {
         return config.getString("storage.path", "samples/metrics.csv");
     }
@@ -48,12 +60,20 @@ public class PerformanceConfig {
         return config.getString("bossbar.title-format", "{metric}: {values}");
     }
 
+    public boolean isBossBarEnabled() {
+        return config.getBoolean("bossbar.enabled", true);
+    }
+
     public boolean isBossBarStatsEnabled() {
         return config.getBoolean("bossbar.use-rollup-stats", false);
     }
 
     public int getReportWindowSeconds() {
         return config.getInt("report.window-seconds", 300);
+    }
+
+    public boolean isReportEnabled() {
+        return config.getBoolean("report.enabled", true);
     }
 
     public double getReportSpikeMsptThreshold() {

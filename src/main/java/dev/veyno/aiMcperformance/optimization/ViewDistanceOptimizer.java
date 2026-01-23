@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public class ViewDistanceOptimizer implements Runnable {
     private static final double KP = 0.22;
@@ -20,6 +21,7 @@ public class ViewDistanceOptimizer implements Runnable {
     private final Plugin plugin;
     private final PerformanceConfig config;
     private final PerformanceTracker tracker;
+    private BukkitTask task;
     private Instant lastChange = Instant.EPOCH;
     private Instant belowTargetSince = null;
     private Instant lastRun = Instant.EPOCH;
@@ -32,11 +34,16 @@ public class ViewDistanceOptimizer implements Runnable {
     }
 
     public void schedule() {
-        if (!config.isDynamicViewDistanceEnabled()) {
-            return;
-        }
+        stop();
         int intervalSeconds = Math.max(5, config.getViewDistanceCheckIntervalSeconds());
-        Bukkit.getScheduler().runTaskTimer(plugin, this, intervalSeconds * 20L, intervalSeconds * 20L);
+        task = Bukkit.getScheduler().runTaskTimer(plugin, this, intervalSeconds * 20L, intervalSeconds * 20L);
+    }
+
+    public void stop() {
+        if (task != null) {
+            task.cancel();
+            task = null;
+        }
     }
 
     @Override

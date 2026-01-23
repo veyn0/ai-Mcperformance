@@ -81,6 +81,11 @@ public class BossBarMonitor {
         playerBars.values().forEach(BossBar::removeAll);
     }
 
+    public void disableAllPlayers() {
+        bars.values().forEach(playerBars -> playerBars.values().forEach(BossBar::removeAll));
+        bars.clear();
+    }
+
     public boolean isEnabled(Player player, MetricType type) {
         Map<MetricType, BossBar> playerBars = bars.get(player.getUniqueId());
         return playerBars != null && playerBars.containsKey(type);

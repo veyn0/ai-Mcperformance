@@ -26,6 +26,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public final class AiMcperformance extends JavaPlugin {
     private PerformanceTracker tracker;
@@ -35,17 +36,14 @@ public final class AiMcperformance extends JavaPlugin {
     private ViewDistanceOptimizer viewDistanceOptimizer;
     private ActionEngine actionEngine;
     private PerformanceSampleStore sampleStore;
+    private BukkitTask samplingTask;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         performanceConfig = new PerformanceConfig(getConfig());
         tracker = new PerformanceTracker(performanceConfig.getLongTermSampleWindowSeconds());
-        sampleStore = createSampleStore();
-        restoreSamplesIfConfigured();
         pterodactylMetricsService = new PterodactylMetricsService(this, performanceConfig);
-        pterodactylMetricsService.start();
-        pterodactylMetricsService.schedule();
         viewDistanceOptimizer = new ViewDistanceOptimizer(this, performanceConfig, tracker);
         actionEngine = new ActionEngine(this, performanceConfig, tracker, List.of(
                 new SimulationDistanceAction(performanceConfig),
@@ -55,15 +53,17 @@ public final class AiMcperformance extends JavaPlugin {
         bossBarMonitor = new BossBarMonitor(this, performanceConfig, tracker, viewDistanceOptimizer::getStatusSnapshot);
         PluginCommand performanceCommand = getCommand("performance");
         if (performanceCommand != null) {
-            performanceCommand.setExecutor(new PerformanceCommand(bossBarMonitor, tracker, performanceConfig));
+            performanceCommand.setExecutor(new PerformanceCommand(this, bossBarMonitor, tracker, performanceConfig));
             performanceCommand.setTabCompleter(new PerformanceTabCompleter());
         } else {
             getLogger().warning("Command 'performance' not found in plugin.yml.");
         }
+        PluginCommand reloadCommand = getCommand("reload");
+        if (reloadCommand != null) {
+            reloadCommand.setExecutor(new PerformanceCommand(this, bossBarMonitor, tracker, performanceConfig));
+        }
         getServer().getPluginManager().registerEvents(new MonitorListener(bossBarMonitor), this);
-        scheduleSampling();
-        viewDistanceOptimizer.schedule();
-        actionEngine.schedule();
+        applyConfiguration(true);
 
     }
 
@@ -72,17 +72,32 @@ public final class AiMcperformance extends JavaPlugin {
         if (bossBarMonitor != null) {
             Bukkit.getOnlinePlayers().forEach(bossBarMonitor::disableAll);
         }
+        if (samplingTask != null) {
+            samplingTask.cancel();
+        }
         if (sampleStore != null) {
             sampleStore.flushNowAsync();
         }
+        if (pterodactylMetricsService != null) {
+            pterodactylMetricsService.stop();
+        }
         if (actionEngine != null) {
             actionEngine.shutdown();
+        }
+        if (viewDistanceOptimizer != null) {
+            viewDistanceOptimizer.stop();
         }
     }
 
     private void scheduleSampling() {
         int intervalSeconds = Math.max(1, performanceConfig.getSampleIntervalSeconds());
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
+        if (samplingTask != null) {
+            samplingTask.cancel();
+        }
+        samplingTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
+            if (!performanceConfig.isSamplingEnabled()) {
+                return;
+            }
             double mspt = Bukkit.getServer().getAverageTickTime();
             double tps = Bukkit.getServer().getTPS()[0];
             int entities = Bukkit.getWorlds().stream()
@@ -118,6 +133,9 @@ public final class AiMcperformance extends JavaPlugin {
     }
 
     private PerformanceSampleStore createSampleStore() {
+        if (!performanceConfig.isStorageEnabled()) {
+            return new NoopPerformanceSampleStore();
+        }
         String type = performanceConfig.getStorageType();
         if (type == null || type.equalsIgnoreCase("none")) {
             return new NoopPerformanceSampleStore();
@@ -142,6 +160,9 @@ public final class AiMcperformance extends JavaPlugin {
     }
 
     private void restoreSamplesIfConfigured() {
+        if (!performanceConfig.isStorageEnabled()) {
+            return;
+        }
         if (!performanceConfig.isStorageRestoreOnStartEnabled()) {
             return;
         }
@@ -150,5 +171,44 @@ public final class AiMcperformance extends JavaPlugin {
             tracker.restoreSamples(restored);
             getLogger().info("Restored " + restored.size() + " performance samples from storage.");
         }
+    }
+
+    public void applyConfiguration(boolean restoreSamples) {
+        performanceConfig.reload(getConfig());
+        if (sampleStore != null) {
+            sampleStore.flushNowAsync();
+        }
+        sampleStore = createSampleStore();
+        if (restoreSamples) {
+            restoreSamplesIfConfigured();
+        }
+        if (pterodactylMetricsService != null) {
+            pterodactylMetricsService.stop();
+            pterodactylMetricsService.start();
+            pterodactylMetricsService.schedule();
+        }
+        if (viewDistanceOptimizer != null) {
+            viewDistanceOptimizer.schedule();
+        }
+        if (actionEngine != null && !performanceConfig.isActionEngineEnabled()) {
+            actionEngine.shutdown();
+        } else if (actionEngine != null) {
+            actionEngine.schedule();
+        }
+        scheduleSampling();
+        if (!performanceConfig.isBossBarEnabled() && bossBarMonitor != null) {
+            bossBarMonitor.disableAllPlayers();
+        }
+    }
+
+    public void reloadPluginState() {
+        reloadConfig();
+        applyConfiguration(false);
+    }
+
+    public void updateFeatureToggle(String configPath, boolean enabled) {
+        getConfig().set(configPath, enabled);
+        saveConfig();
+        applyConfiguration(false);
     }
 }
