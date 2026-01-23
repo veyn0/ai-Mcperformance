@@ -5,9 +5,16 @@ api-version: '1.21'
 commands:
   performance:
     description: Zeigt Performance-Monitoring BossBars an oder erstellt einen Report.
-    usage: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle> | /performance report
+    usage: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle> | /performance report | /performance feature <sampling|storage|bossbar|report|pterodactyl|viewdistance|actions> <on|off|toggle> | /performance reload
     permission: ai-mcperformance.command.performance
+  reload:
+    description: Lädt die ai-mcperformance Konfiguration neu.
+    usage: /reload
+    permission: ai-mcperformance.command.reload
 permissions:
   ai-mcperformance.command.performance:
-    description: Zugriff auf /performance monitor
+    description: Zugriff auf /performance und Subcommands
+    default: op
+  ai-mcperformance.command.reload:
+    description: Zugriff auf /reload
     default: op

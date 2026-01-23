@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public class ActionEngine implements Runnable {
     private final Plugin plugin;
@@ -18,6 +19,7 @@ public class ActionEngine implements Runnable {
     private final List<PerformanceAction> actions;
     private final Map<String, ActionState> states = new HashMap<>();
     private final ActionContext context;
+    private BukkitTask task;
 
     public ActionEngine(Plugin plugin, PerformanceConfig config, PerformanceTracker tracker, List<PerformanceAction> actions) {
         this.plugin = plugin;
@@ -31,14 +33,20 @@ public class ActionEngine implements Runnable {
     }
 
     public void schedule() {
-        if (!config.isActionEngineEnabled()) {
-            return;
-        }
+        stop();
         int intervalSeconds = Math.max(5, config.getActionEngineCheckIntervalSeconds());
-        Bukkit.getScheduler().runTaskTimer(plugin, this, intervalSeconds * 20L, intervalSeconds * 20L);
+        task = Bukkit.getScheduler().runTaskTimer(plugin, this, intervalSeconds * 20L, intervalSeconds * 20L);
+    }
+
+    public void stop() {
+        if (task != null) {
+            task.cancel();
+            task = null;
+        }
     }
 
     public void shutdown() {
+        stop();
         actions.stream()
                 .sorted(Comparator.comparingInt(PerformanceAction::getPriority))
                 .forEach(this::tryRevert);

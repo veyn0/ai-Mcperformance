@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public class PterodactylMetricsService {
     private final Plugin plugin;
@@ -17,6 +18,7 @@ public class PterodactylMetricsService {
     private boolean available;
     private boolean useLocalFallback;
     private OperatingSystemMXBean operatingSystemMXBean;
+    private BukkitTask refreshTask;
 
     public PterodactylMetricsService(Plugin plugin, PerformanceConfig config) {
         this.plugin = plugin;
@@ -25,6 +27,9 @@ public class PterodactylMetricsService {
 
     public void start() {
         operatingSystemMXBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+        available = false;
+        useLocalFallback = false;
+        client = null;
         String priority = config.getPterodactylCpuPriority().toLowerCase(Locale.ROOT);
         if ("local-only".equals(priority)) {
             activateLocalFallback("Configured for local-only CPU monitoring.");
@@ -52,7 +57,15 @@ public class PterodactylMetricsService {
             return;
         }
         int refreshSeconds = Math.max(5, config.getPterodactylRefreshSeconds());
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::refreshCpuUsage, 20L, refreshSeconds * 20L);
+        stop();
+        refreshTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::refreshCpuUsage, 20L, refreshSeconds * 20L);
+    }
+
+    public void stop() {
+        if (refreshTask != null) {
+            refreshTask.cancel();
+            refreshTask = null;
+        }
     }
 
     public double getCpuUsage() {

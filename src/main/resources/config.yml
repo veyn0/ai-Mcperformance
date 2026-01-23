@@ -1,4 +1,6 @@
 sampling:
+  # Aktiviert die Aufnahme der Messwerte.
+  enabled: true
   # Wie oft die Messwerte aufgenommen werden (je kleiner, desto reaktiver).
   interval-seconds: 1
   # Maximales Zeitfenster (in Sekunden), das für gleitende Mittelwerte genutzt wird.
@@ -7,6 +9,8 @@ sampling:
   long-window-seconds: 172800
 
 storage:
+  # Aktiviert die Persistenz von Samples.
+  enabled: true
   # Typ der Persistenz: csv oder none.
   type: "csv"
   # Pfad relativ zum Plugin-Ordner oder absolut.
@@ -17,12 +21,16 @@ storage:
   restore-on-start: true
 
 bossbar:
+  # Aktiviert die BossBar-Anzeige.
+  enabled: true
   # Format der BossBar-Anzeige. {metric} = Name der Metrik, {values} = aktuelle Werte.
   title-format: "{metric}: {values}"
   # Nutze Rollup-Statistiken (Median/P95) statt Mittelwerten in der BossBar.
   use-rollup-stats: false
 
 report:
+  # Aktiviert das Erstellen von Reports.
+  enabled: true
   # Zeitfenster (in Sekunden) für den Report.
   window-seconds: 300
   # MSPT-Schwelle für Spike-Zählung.
