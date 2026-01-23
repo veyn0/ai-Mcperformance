@@ -175,7 +175,7 @@ public class PerformanceCommand implements CommandExecutor {
         sendFormatted(sender, config.getMessageReportMspt(), Map.of(
                 "mspt_avg", ONE_DECIMAL.format(msptStats.average()),
                 "mspt_p95", ONE_DECIMAL.format(msptStats.p95()),
-                "spike_count", Integer.toString(result.spikeCount())
+                "spike_count", Long.toString(result.spikeCount())
         ));
         sendFormatted(sender, config.getMessageReportCorrelation(), Map.of(
                 "corr_entities", TWO_DECIMAL.format(correlations.entities()),
