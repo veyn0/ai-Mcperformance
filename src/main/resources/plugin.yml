@@ -5,7 +5,7 @@ api-version: '1.21'
 commands:
   performance:
     description: Zeigt Performance-Monitoring BossBars an oder erstellt einen Report.
-    usage: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle> | /performance report | /performance feature <sampling|storage|bossbar|report|pterodactyl|viewdistance|actions> <on|off|toggle> | /performance reload
+    usage: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle> | /performance report | /performance feature <sampling|storage|bossbar|report|pterodactyl|viewdistance|actions> <on|off|toggle> | /performance test <start|stop|status> [view-distance|simulation-distance|mob-caps] | /performance reload
     permission: ai-mcperformance.command.performance
   reload:
     description: Lädt die ai-mcperformance Konfiguration neu.

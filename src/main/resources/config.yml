@@ -148,12 +148,66 @@ actions:
       ambient: 5
       water-animal: 5
 
+test-mode:
+  # Aktiviert den Belastungstest-Modus.
+  enabled: false
+  # Gesamtdauer des Tests in Minuten.
+  duration-minutes: 20
+  # Schritt-Intervall in Minuten (nach jedem Intervall wird der Wert erhöht).
+  step-interval-minutes: 2
+  # Zu testende Aktion: view-distance, simulation-distance, mob-caps
+  action: "view-distance"
+  value:
+    # Startwert für View-/Simulation-Distance.
+    start: 4
+    # Schrittweite pro Intervall.
+    step: 1
+    # Maximaler Wert (0 = kein Limit).
+    max: 12
+  mob-caps:
+    # Start-Offset für Mob-Caps (wird zu den Basis-Limits addiert).
+    start: 0
+    # Schrittweite pro Intervall.
+    step: 2
+    # Maximaler Offset (0 = kein Limit).
+    max: 0
+    # Basis-Limits (werden pro Kategorie als Ausgangspunkt genutzt).
+    base-limits:
+      monster: 35
+      animal: 10
+      ambient: 5
+      water-animal: 5
+    # Optionale Max-Limits pro Kategorie.
+    max-limits:
+      monster: 70
+      animal: 20
+      ambient: 10
+      water-animal: 10
+  output:
+    # Zusammenfassung pro Step.
+    summary-path: "tests/load-test-summary.csv"
+    # Optional: Rohdaten aller Samples während des Tests.
+    sample-path: "tests/load-test-samples.csv"
+    write-raw-samples: true
+  player-distribution:
+    # Spieler während des Tests verteilen (Teleport).
+    enabled: false
+    # spread = großflächig, cluster = nahe Spawn.
+    mode: "spread"
+    # Radius für "spread".
+    spread-radius: 2000
+    # Radius für "cluster".
+    cluster-radius: 64
+    # Optional: Weltname für Verteilung.
+    world: ""
+
 messages:
   reload: "<green>AI-McPerformance-Konfiguration neu geladen.</green>"
   only-player: "<red>Dieser Befehl kann nur im Spiel genutzt werden.</red>"
   usage:
     monitor: "<gray>Verwendung:</gray> <white>/performance monitor &lt;mspt|tps|entities|ram|cpu|chunks|viewdistance&gt; &lt;on|off|toggle&gt;</white>"
     feature: "<gray>Oder:</gray> <white>/performance feature &lt;sampling|storage|bossbar|report|pterodactyl|viewdistance|actions&gt; &lt;on|off|toggle&gt;</white>"
+    test: "<gray>Oder:</gray> <white>/performance test &lt;start|stop|status&gt; [view-distance|simulation-distance|mob-caps]</white>"
     reload: "<gray>Oder:</gray> <white>/performance reload</white>"
   bossbar:
     disabled: "<red>BossBar-Monitoring ist derzeit deaktiviert.</red>"
@@ -162,6 +216,14 @@ messages:
   feature:
     unknown: "<red>Unbekanntes Feature:</red> <white>{feature}</white>"
     toggle: "<green>Feature</green> <yellow>{feature}</yellow> <green>{state}</green>."
+  test:
+    disabled: "<red>Belastungstest-Modus ist deaktiviert.</red>"
+    started: "<green>Belastungstest gestartet.</green>"
+    stopped: "<green>Belastungstest beendet.</green>"
+    already-running: "<yellow>Belastungstest läuft bereits.</yellow>"
+    not-running: "<yellow>Es läuft aktuell kein Belastungstest.</yellow>"
+    invalid-action: "<red>Unbekannte Test-Aktion:</red> <white>{action}</white>"
+    status: "<gray>Belastungstest:</gray> Aktion <white>{action}</white>, Step <white>{step}/{total_steps}</white>, Wert <white>{value}</white>, Start <white>{started}</white>, Ende <white>{ends}</white>"
   report:
     disabled: "<red>Performance-Reports sind derzeit deaktiviert.</red>"
     empty: "<red>Keine Daten für den Report verfügbar.</red>"

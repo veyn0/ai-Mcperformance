@@ -38,6 +38,18 @@ public class PerformanceTracker {
                 .toList();
     }
 
+    public List<PerformanceSample> getSamplesBetween(Instant start, Instant end) {
+        if (start == null || end == null) {
+            return List.of();
+        }
+        Instant normalizedStart = start.isAfter(end) ? end : start;
+        Instant normalizedEnd = start.isAfter(end) ? start : end;
+        return samples.stream()
+                .filter(sample -> !sample.timestamp().isBefore(normalizedStart))
+                .filter(sample -> !sample.timestamp().isAfter(normalizedEnd))
+                .toList();
+    }
+
     public PerformanceSample latestSample() {
         return samples.peekLast();
     }
