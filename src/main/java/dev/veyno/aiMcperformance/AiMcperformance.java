@@ -11,6 +11,7 @@ import dev.veyno.aiMcperformance.metrics.storage.NoopPerformanceSampleStore;
 import dev.veyno.aiMcperformance.metrics.storage.PerformanceSampleStore;
 import dev.veyno.aiMcperformance.monitor.BossBarMonitor;
 import dev.veyno.aiMcperformance.monitor.MonitorListener;
+import dev.veyno.aiMcperformance.monitor.StatusOverviewBroadcaster;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceOptimizer;
 import dev.veyno.aiMcperformance.optimization.actions.ActionEngine;
 import dev.veyno.aiMcperformance.optimization.actions.EntityActivationRangeAction;
@@ -37,6 +38,7 @@ public final class AiMcperformance extends JavaPlugin {
     private ActionEngine actionEngine;
     private PerformanceSampleStore sampleStore;
     private BukkitTask samplingTask;
+    private StatusOverviewBroadcaster statusOverviewBroadcaster;
 
     @Override
     public void onEnable() {
@@ -51,6 +53,12 @@ public final class AiMcperformance extends JavaPlugin {
                 new MobCapsAction(performanceConfig)
         ));
         bossBarMonitor = new BossBarMonitor(this, performanceConfig, tracker, viewDistanceOptimizer::getStatusSnapshot);
+        statusOverviewBroadcaster = new StatusOverviewBroadcaster(
+                this,
+                performanceConfig,
+                tracker,
+                viewDistanceOptimizer::getStatusSnapshot
+        );
         PluginCommand performanceCommand = getCommand("performance");
         if (performanceCommand != null) {
             performanceCommand.setExecutor(new PerformanceCommand(this, bossBarMonitor, tracker, performanceConfig));
@@ -86,6 +94,9 @@ public final class AiMcperformance extends JavaPlugin {
         }
         if (viewDistanceOptimizer != null) {
             viewDistanceOptimizer.stop();
+        }
+        if (statusOverviewBroadcaster != null) {
+            statusOverviewBroadcaster.stop();
         }
     }
 
@@ -198,6 +209,9 @@ public final class AiMcperformance extends JavaPlugin {
         scheduleSampling();
         if (!performanceConfig.isBossBarEnabled() && bossBarMonitor != null) {
             bossBarMonitor.disableAllPlayers();
+        }
+        if (statusOverviewBroadcaster != null) {
+            statusOverviewBroadcaster.schedule();
         }
     }
 
