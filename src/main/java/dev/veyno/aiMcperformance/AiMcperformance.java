@@ -17,6 +17,7 @@ import dev.veyno.aiMcperformance.optimization.actions.ActionEngine;
 import dev.veyno.aiMcperformance.optimization.actions.EntityActivationRangeAction;
 import dev.veyno.aiMcperformance.optimization.actions.MobCapsAction;
 import dev.veyno.aiMcperformance.optimization.actions.SimulationDistanceAction;
+import dev.veyno.aiMcperformance.testing.LoadTestManager;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 import java.nio.file.Path;
@@ -39,6 +40,7 @@ public final class AiMcperformance extends JavaPlugin {
     private PerformanceSampleStore sampleStore;
     private BukkitTask samplingTask;
     private StatusOverviewBroadcaster statusOverviewBroadcaster;
+    private LoadTestManager loadTestManager;
 
     @Override
     public void onEnable() {
@@ -59,16 +61,17 @@ public final class AiMcperformance extends JavaPlugin {
                 tracker,
                 viewDistanceOptimizer::getStatusSnapshot
         );
+        loadTestManager = new LoadTestManager(this, performanceConfig, tracker, viewDistanceOptimizer, actionEngine);
         PluginCommand performanceCommand = getCommand("performance");
         if (performanceCommand != null) {
-            performanceCommand.setExecutor(new PerformanceCommand(this, bossBarMonitor, tracker, performanceConfig));
+            performanceCommand.setExecutor(new PerformanceCommand(this, bossBarMonitor, tracker, performanceConfig, loadTestManager));
             performanceCommand.setTabCompleter(new PerformanceTabCompleter());
         } else {
             getLogger().warning("Command 'performance' not found in plugin.yml.");
         }
         PluginCommand reloadCommand = getCommand("reload");
         if (reloadCommand != null) {
-            reloadCommand.setExecutor(new PerformanceCommand(this, bossBarMonitor, tracker, performanceConfig));
+            reloadCommand.setExecutor(new PerformanceCommand(this, bossBarMonitor, tracker, performanceConfig, loadTestManager));
         }
         getServer().getPluginManager().registerEvents(new MonitorListener(bossBarMonitor), this);
         applyConfiguration(true);
@@ -79,6 +82,9 @@ public final class AiMcperformance extends JavaPlugin {
     public void onDisable() {
         if (bossBarMonitor != null) {
             Bukkit.getOnlinePlayers().forEach(bossBarMonitor::disableAll);
+        }
+        if (loadTestManager != null && loadTestManager.isRunning()) {
+            loadTestManager.stop();
         }
         if (samplingTask != null) {
             samplingTask.cancel();
@@ -199,12 +205,16 @@ public final class AiMcperformance extends JavaPlugin {
             pterodactylMetricsService.schedule();
         }
         if (viewDistanceOptimizer != null) {
-            viewDistanceOptimizer.schedule();
+            if (loadTestManager == null || !loadTestManager.isRunning()) {
+                viewDistanceOptimizer.schedule();
+            }
         }
         if (actionEngine != null && !performanceConfig.isActionEngineEnabled()) {
             actionEngine.shutdown();
         } else if (actionEngine != null) {
-            actionEngine.schedule();
+            if (loadTestManager == null || !loadTestManager.isRunning()) {
+                actionEngine.schedule();
+            }
         }
         scheduleSampling();
         if (!performanceConfig.isBossBarEnabled() && bossBarMonitor != null) {

@@ -9,6 +9,8 @@ import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
 import dev.veyno.aiMcperformance.metrics.StatsWindow;
 import dev.veyno.aiMcperformance.message.MessageFormatter;
 import dev.veyno.aiMcperformance.monitor.BossBarMonitor;
+import dev.veyno.aiMcperformance.testing.LoadTestManager;
+import dev.veyno.aiMcperformance.testing.LoadTestManager.LoadTestStatus;
 import java.text.DecimalFormat;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -29,18 +31,21 @@ public class PerformanceCommand implements CommandExecutor {
     private final BossBarMonitor monitor;
     private final PerformanceTracker tracker;
     private final PerformanceConfig config;
+    private final LoadTestManager loadTestManager;
     private final MessageFormatter messageFormatter = new MessageFormatter();
 
     public PerformanceCommand(
             AiMcperformance plugin,
             BossBarMonitor monitor,
             PerformanceTracker tracker,
-            PerformanceConfig config
+            PerformanceConfig config,
+            LoadTestManager loadTestManager
     ) {
         this.plugin = plugin;
         this.monitor = monitor;
         this.tracker = tracker;
         this.config = config;
+        this.loadTestManager = loadTestManager;
     }
 
     @Override
@@ -58,6 +63,9 @@ public class PerformanceCommand implements CommandExecutor {
         if (args.length >= 1 && "feature".equalsIgnoreCase(args[0])) {
             return handleFeatureToggle(sender, args);
         }
+        if (args.length >= 1 && "test".equalsIgnoreCase(args[0])) {
+            return handleTestMode(sender, args);
+        }
         if (args.length >= 1 && "report".equalsIgnoreCase(args[0])) {
             if (!config.isReportEnabled()) {
                 sendFormatted(sender, config.getMessageReportDisabled(), Map.of());
@@ -73,6 +81,7 @@ public class PerformanceCommand implements CommandExecutor {
         if (args.length < 2 || !"monitor".equalsIgnoreCase(args[0])) {
             sendFormatted(sender, config.getMessageUsageMonitor(), Map.of());
             sendFormatted(sender, config.getMessageUsageFeature(), Map.of());
+            sendFormatted(sender, config.getMessageUsageTestMode(), Map.of());
             sendFormatted(sender, config.getMessageUsageReload(), Map.of());
             return true;
         }
@@ -134,6 +143,64 @@ public class PerformanceCommand implements CommandExecutor {
                 "state", state
         ));
         return true;
+    }
+
+    private boolean handleTestMode(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sendFormatted(sender, config.getMessageUsageTestMode(), Map.of());
+            return true;
+        }
+        String action = args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "start" -> {
+                String requestedAction = args.length >= 3 ? args[2] : null;
+                boolean started = loadTestManager.start(requestedAction);
+                if (started) {
+                    sendFormatted(sender, config.getMessageTestModeStarted(), Map.of());
+                    return true;
+                }
+                String error = loadTestManager.getLastError();
+                if ("disabled".equals(error)) {
+                    sendFormatted(sender, config.getMessageTestModeDisabled(), Map.of());
+                } else if ("invalid-action".equals(error)) {
+                    sendFormatted(sender, config.getMessageTestModeInvalidAction(), Map.of(
+                            "action", requestedAction != null ? requestedAction : config.getTestModeAction()
+                    ));
+                } else {
+                    sendFormatted(sender, config.getMessageTestModeAlreadyRunning(), Map.of());
+                }
+                return true;
+            }
+            case "stop" -> {
+                boolean stopped = loadTestManager.stop();
+                if (stopped) {
+                    sendFormatted(sender, config.getMessageTestModeStopped(), Map.of());
+                } else {
+                    sendFormatted(sender, config.getMessageTestModeNotRunning(), Map.of());
+                }
+                return true;
+            }
+            case "status" -> {
+                LoadTestStatus status = loadTestManager.getStatus();
+                if (!status.running()) {
+                    sendFormatted(sender, config.getMessageTestModeNotRunning(), Map.of());
+                    return true;
+                }
+                sendFormatted(sender, config.getMessageTestModeStatus(), Map.of(
+                        "action", status.action() == null ? "-" : status.action(),
+                        "step", Integer.toString(status.currentStep()),
+                        "total_steps", Integer.toString(status.totalSteps()),
+                        "value", Integer.toString(status.currentValue()),
+                        "started", status.startedAt() == null ? "-" : TIME_FORMAT.format(status.startedAt()),
+                        "ends", status.endsAt() == null ? "-" : TIME_FORMAT.format(status.endsAt())
+                ));
+                return true;
+            }
+            default -> {
+                sendFormatted(sender, config.getMessageUsageTestMode(), Map.of());
+                return true;
+            }
+        }
     }
 
     private MetricType parseType(String input) {

@@ -186,6 +186,108 @@ public class PerformanceConfig {
         return config.getBoolean("actions.enabled", true);
     }
 
+    public boolean isTestModeEnabled() {
+        return config.getBoolean("test-mode.enabled", false);
+    }
+
+    public int getTestModeDurationMinutes() {
+        return config.getInt("test-mode.duration-minutes", 20);
+    }
+
+    public int getTestModeStepIntervalMinutes() {
+        return config.getInt("test-mode.step-interval-minutes", 2);
+    }
+
+    public String getTestModeAction() {
+        return config.getString("test-mode.action", "view-distance");
+    }
+
+    public int getTestModeValueStart() {
+        return config.getInt("test-mode.value.start", 4);
+    }
+
+    public int getTestModeValueStep() {
+        return config.getInt("test-mode.value.step", 1);
+    }
+
+    public int getTestModeValueMax() {
+        return config.getInt("test-mode.value.max", 12);
+    }
+
+    public int getTestModeMobCapsStart() {
+        return config.getInt("test-mode.mob-caps.start", 0);
+    }
+
+    public int getTestModeMobCapsStep() {
+        return config.getInt("test-mode.mob-caps.step", 2);
+    }
+
+    public int getTestModeMobCapsMax() {
+        return config.getInt("test-mode.mob-caps.max", 0);
+    }
+
+    public Map<SpawnCategory, Integer> getTestModeMobCapsBaseLimits() {
+        Map<SpawnCategory, Integer> limits = new EnumMap<>(SpawnCategory.class);
+        var section = config.getConfigurationSection("test-mode.mob-caps.base-limits");
+        if (section == null) {
+            return limits;
+        }
+        for (String key : section.getKeys(false)) {
+            SpawnCategory category = parseSpawnCategory(key);
+            if (category != null) {
+                limits.put(category, section.getInt(key));
+            }
+        }
+        return limits;
+    }
+
+    public Map<SpawnCategory, Integer> getTestModeMobCapsMaxLimits() {
+        Map<SpawnCategory, Integer> limits = new EnumMap<>(SpawnCategory.class);
+        var section = config.getConfigurationSection("test-mode.mob-caps.max-limits");
+        if (section == null) {
+            return limits;
+        }
+        for (String key : section.getKeys(false)) {
+            SpawnCategory category = parseSpawnCategory(key);
+            if (category != null) {
+                limits.put(category, section.getInt(key));
+            }
+        }
+        return limits;
+    }
+
+    public String getTestModeSummaryPath() {
+        return config.getString("test-mode.output.summary-path", "tests/load-test-summary.csv");
+    }
+
+    public String getTestModeSamplePath() {
+        return config.getString("test-mode.output.sample-path", "tests/load-test-samples.csv");
+    }
+
+    public boolean isTestModeWriteRawSamples() {
+        return config.getBoolean("test-mode.output.write-raw-samples", true);
+    }
+
+    public boolean isTestModePlayerDistributionEnabled() {
+        return config.getBoolean("test-mode.player-distribution.enabled", false);
+    }
+
+    public String getTestModePlayerDistributionMode() {
+        return config.getString("test-mode.player-distribution.mode", "spread");
+    }
+
+    public int getTestModePlayerSpreadRadius() {
+        return config.getInt("test-mode.player-distribution.spread-radius", 2000);
+    }
+
+    public int getTestModePlayerClusterRadius() {
+        return config.getInt("test-mode.player-distribution.cluster-radius", 64);
+    }
+
+    public String getTestModePlayerDistributionWorld() {
+        return config.getString("test-mode.player-distribution.world", "");
+    }
+
     public int getActionEngineCheckIntervalSeconds() {
         return config.getInt("actions.check-interval-seconds", 15);
     }
@@ -293,6 +395,40 @@ public class PerformanceConfig {
 
     public String getMessageUsageReload() {
         return message("messages.usage.reload", "Oder: /performance reload");
+    }
+
+    public String getMessageUsageTestMode() {
+        return message("messages.usage.test",
+                "Oder: /performance test <start|stop|status> [view-distance|simulation-distance|mob-caps]");
+    }
+
+    public String getMessageTestModeDisabled() {
+        return message("messages.test.disabled", "Der Belastungstest-Modus ist deaktiviert.");
+    }
+
+    public String getMessageTestModeStarted() {
+        return message("messages.test.started", "Belastungstest gestartet.");
+    }
+
+    public String getMessageTestModeStopped() {
+        return message("messages.test.stopped", "Belastungstest beendet.");
+    }
+
+    public String getMessageTestModeAlreadyRunning() {
+        return message("messages.test.already-running", "Belastungstest läuft bereits.");
+    }
+
+    public String getMessageTestModeNotRunning() {
+        return message("messages.test.not-running", "Es läuft aktuell kein Belastungstest.");
+    }
+
+    public String getMessageTestModeInvalidAction() {
+        return message("messages.test.invalid-action", "Unbekannte Test-Aktion: {action}");
+    }
+
+    public String getMessageTestModeStatus() {
+        return message("messages.test.status",
+                "Belastungstest: Aktion {action}, Step {step}/{total_steps}, Wert {value}, Start {started}, Ende {ends}");
     }
 
     public String getMessageBossBarDisabled() {
