@@ -37,6 +37,8 @@ report:
 pterodactyl:
   # Aktiviert das Auslesen der CPU-Auslastung via Pterodactyl (benötigt Pterodactyl4J).
   enabled: false
+  # Priorität der CPU-Quelle: pterodactyl-first oder local-only.
+  cpu-priority: "pterodactyl-first"
   # URL des Panels, z. B. https://panel.example.com
   panel-url: "https://panel.example.com"
   # API-Key mit Leserechten für den Server.

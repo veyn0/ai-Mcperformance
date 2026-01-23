@@ -92,6 +92,10 @@ public class PerformanceConfig {
         return config.getInt("pterodactyl.refresh-seconds", 15);
     }
 
+    public String getPterodactylCpuPriority() {
+        return config.getString("pterodactyl.cpu-priority", "pterodactyl-first");
+    }
+
     public boolean isDynamicViewDistanceEnabled() {
         return config.getBoolean("view-distance.enabled", true);
     }
