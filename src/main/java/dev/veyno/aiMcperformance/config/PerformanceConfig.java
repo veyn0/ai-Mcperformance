@@ -64,6 +64,14 @@ public class PerformanceConfig {
         return config.getDouble("report.correlation-threshold", 0.5);
     }
 
+    public int getReportPeakWindowSeconds() {
+        return config.getInt("report.peak-window-seconds", 30);
+    }
+
+    public int getReportPeakWindowCount() {
+        return config.getInt("report.peak-window-count", 3);
+    }
+
     public boolean isPterodactylEnabled() {
         return config.getBoolean("pterodactyl.enabled", false);
     }

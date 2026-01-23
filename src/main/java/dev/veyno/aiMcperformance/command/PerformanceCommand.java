@@ -2,11 +2,14 @@ package dev.veyno.aiMcperformance.command;
 
 import dev.veyno.aiMcperformance.config.PerformanceConfig;
 import dev.veyno.aiMcperformance.metrics.MetricType;
+import dev.veyno.aiMcperformance.metrics.PerformanceAnalyzer;
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
 import dev.veyno.aiMcperformance.metrics.StatsWindow;
 import dev.veyno.aiMcperformance.monitor.BossBarMonitor;
 import java.text.DecimalFormat;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import org.bukkit.command.Command;
@@ -17,6 +20,8 @@ import org.bukkit.entity.Player;
 public class PerformanceCommand implements CommandExecutor {
     private static final DecimalFormat ONE_DECIMAL = new DecimalFormat("0.0");
     private static final DecimalFormat TWO_DECIMAL = new DecimalFormat("0.00");
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss")
+            .withZone(ZoneId.systemDefault());
     private final BossBarMonitor monitor;
     private final PerformanceTracker tracker;
     private final PerformanceConfig config;
@@ -82,31 +87,45 @@ public class PerformanceCommand implements CommandExecutor {
             sender.sendMessage("Keine Daten für den Report verfügbar.");
             return;
         }
-        StatsWindow msptStats = tracker.statsWindow(windowSeconds, PerformanceSample::mspt);
-        double p95 = msptStats.p95();
-        long spikes = samples.stream()
-                .filter(sample -> sample.mspt() >= config.getReportSpikeMsptThreshold())
-                .count();
-        double entitiesCorr = StatsWindow.correlation(samples, PerformanceSample::mspt, sample -> sample.entities());
-        double chunksCorr = StatsWindow.correlation(samples, PerformanceSample::mspt, sample -> sample.chunks());
-        String correlationHint = correlationHint(entitiesCorr, chunksCorr);
-        sender.sendMessage("Performance-Report (" + windowSeconds + "s): P95 MSPT "
-                + ONE_DECIMAL.format(p95) + "ms, Spikes " + spikes + ", " + correlationHint);
-    }
-
-    private String correlationHint(double entitiesCorr, double chunksCorr) {
-        double threshold = config.getReportCorrelationThreshold();
-        double entitiesAbs = Math.abs(entitiesCorr);
-        double chunksAbs = Math.abs(chunksCorr);
-        if (entitiesAbs < threshold && chunksAbs < threshold) {
-            return "Hinweis: Keine klare Korrelation zu Entities/Chunks (rE="
-                    + TWO_DECIMAL.format(entitiesCorr) + ", rC=" + TWO_DECIMAL.format(chunksCorr) + ")";
+        PerformanceAnalyzer analyzer = new PerformanceAnalyzer();
+        PerformanceAnalyzer.AnalysisResult result = analyzer.analyze(
+                samples,
+                windowSeconds,
+                config.getReportSpikeMsptThreshold(),
+                config.getReportCorrelationThreshold(),
+                config.getReportPeakWindowSeconds(),
+                config.getReportPeakWindowCount(),
+                config.getActionCpuThreshold(),
+                config.getActionEntityThreshold()
+        );
+        StatsWindow msptStats = result.msptStats();
+        PerformanceAnalyzer.Correlations correlations = result.correlations();
+        sender.sendMessage("Performance-Report (" + windowSeconds + "s):");
+        sender.sendMessage("MSPT Ø " + ONE_DECIMAL.format(msptStats.average()) + "ms, P95 "
+                + ONE_DECIMAL.format(msptStats.p95()) + "ms, Spikes " + result.spikeCount());
+        sender.sendMessage("Korrelation MSPT: Entities r=" + TWO_DECIMAL.format(correlations.entities())
+                + ", Chunks r=" + TWO_DECIMAL.format(correlations.chunks())
+                + ", Spieler r=" + TWO_DECIMAL.format(correlations.players()));
+        if (result.bottlenecks().isEmpty()) {
+            sender.sendMessage("Engpässe: keine auffälligen Indikatoren.");
+        } else {
+            sender.sendMessage("Engpässe:");
+            result.bottlenecks().forEach(hint -> sender.sendMessage(" - " + hint));
         }
-        if (entitiesAbs >= chunksAbs) {
-            return "Hinweis: MSPT korreliert stärker mit Entities (rE="
-                    + TWO_DECIMAL.format(entitiesCorr) + ", rC=" + TWO_DECIMAL.format(chunksCorr) + ")";
+        if (!result.peakWindows().isEmpty()) {
+            sender.sendMessage("Top-" + result.peakWindows().size() + " Peak-Windows ("
+                    + config.getReportPeakWindowSeconds() + "s):");
+            int index = 1;
+            for (PerformanceAnalyzer.PeakWindow window : result.peakWindows()) {
+                sender.sendMessage(" " + index + ") "
+                        + TIME_FORMAT.format(window.start()) + " - " + TIME_FORMAT.format(window.end())
+                        + ": P95 " + ONE_DECIMAL.format(window.msptStats().p95()) + "ms, Ø "
+                        + ONE_DECIMAL.format(window.msptStats().average()) + "ms, Ø Entities "
+                        + ONE_DECIMAL.format(window.averageEntities()) + ", Ø Chunks "
+                        + ONE_DECIMAL.format(window.averageChunks()) + ", Ø Spieler "
+                        + ONE_DECIMAL.format(window.averagePlayers()));
+                index++;
+            }
         }
-        return "Hinweis: MSPT korreliert stärker mit Chunks (rE="
-                + TWO_DECIMAL.format(entitiesCorr) + ", rC=" + TWO_DECIMAL.format(chunksCorr) + ")";
     }
 }
