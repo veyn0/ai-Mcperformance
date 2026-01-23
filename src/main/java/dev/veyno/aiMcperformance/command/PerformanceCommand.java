@@ -7,12 +7,14 @@ import dev.veyno.aiMcperformance.metrics.PerformanceAnalyzer;
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
 import dev.veyno.aiMcperformance.metrics.StatsWindow;
+import dev.veyno.aiMcperformance.message.MessageFormatter;
 import dev.veyno.aiMcperformance.monitor.BossBarMonitor;
 import java.text.DecimalFormat;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -27,6 +29,7 @@ public class PerformanceCommand implements CommandExecutor {
     private final BossBarMonitor monitor;
     private final PerformanceTracker tracker;
     private final PerformanceConfig config;
+    private final MessageFormatter messageFormatter = new MessageFormatter();
 
     public PerformanceCommand(
             AiMcperformance plugin,
@@ -44,12 +47,12 @@ public class PerformanceCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if ("reload".equalsIgnoreCase(command.getName())) {
             plugin.reloadPluginState();
-            sender.sendMessage("AI-McPerformance-Konfiguration neu geladen.");
+            sendFormatted(sender, config.getMessageReload(), Map.of());
             return true;
         }
         if (args.length >= 1 && "reload".equalsIgnoreCase(args[0])) {
             plugin.reloadPluginState();
-            sender.sendMessage("AI-McPerformance-Konfiguration neu geladen.");
+            sendFormatted(sender, config.getMessageReload(), Map.of());
             return true;
         }
         if (args.length >= 1 && "feature".equalsIgnoreCase(args[0])) {
@@ -57,29 +60,29 @@ public class PerformanceCommand implements CommandExecutor {
         }
         if (args.length >= 1 && "report".equalsIgnoreCase(args[0])) {
             if (!config.isReportEnabled()) {
-                sender.sendMessage("Performance-Reports sind derzeit deaktiviert.");
+                sendFormatted(sender, config.getMessageReportDisabled(), Map.of());
                 return true;
             }
             sendReport(sender);
             return true;
         }
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Dieser Befehl kann nur im Spiel genutzt werden.");
+            sendFormatted(sender, config.getMessageOnlyPlayer(), Map.of());
             return true;
         }
         if (args.length < 2 || !"monitor".equalsIgnoreCase(args[0])) {
-            sender.sendMessage("Verwendung: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle>");
-            sender.sendMessage("Oder: /performance feature <sampling|storage|bossbar|report|pterodactyl|viewdistance|actions> <on|off|toggle>");
-            sender.sendMessage("Oder: /performance reload");
+            sendFormatted(sender, config.getMessageUsageMonitor(), Map.of());
+            sendFormatted(sender, config.getMessageUsageFeature(), Map.of());
+            sendFormatted(sender, config.getMessageUsageReload(), Map.of());
             return true;
         }
         if (!config.isBossBarEnabled()) {
-            sender.sendMessage("BossBar-Monitoring ist derzeit deaktiviert.");
+            sendFormatted(sender, config.getMessageBossBarDisabled(), Map.of());
             return true;
         }
         MetricType type = parseType(args[1]);
         if (type == null) {
-            sender.sendMessage("Unbekanntes Metric: " + args[1]);
+            sendFormatted(sender, config.getMessageBossBarUnknownMetric(), Map.of("metric", args[1]));
             return true;
         }
         String action = args.length >= 3 ? args[2].toLowerCase(Locale.ROOT) : "toggle";
@@ -89,23 +92,27 @@ public class PerformanceCommand implements CommandExecutor {
             case "off", "disable" -> enable = false;
             case "toggle" -> enable = !monitor.isEnabled(player, type);
             default -> {
-                sender.sendMessage("Verwendung: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle>");
+                sendFormatted(sender, config.getMessageUsageMonitor(), Map.of());
                 return true;
             }
         }
         monitor.toggle(player, type, enable);
-        sender.sendMessage("BossBar für " + type.getDisplayName() + " " + (enable ? "aktiviert." : "deaktiviert."));
+        String state = enable ? "aktiviert" : "deaktiviert";
+        sendFormatted(sender, config.getMessageBossBarToggle(), Map.of(
+                "metric", type.getDisplayName(),
+                "state", state
+        ));
         return true;
     }
 
     private boolean handleFeatureToggle(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sender.sendMessage("Verwendung: /performance feature <sampling|storage|bossbar|report|pterodactyl|viewdistance|actions> <on|off|toggle>");
+            sendFormatted(sender, config.getMessageUsageFeature(), Map.of());
             return true;
         }
         FeatureToggle feature = FeatureToggle.fromInput(args[1]);
         if (feature == null) {
-            sender.sendMessage("Unbekanntes Feature: " + args[1]);
+            sendFormatted(sender, config.getMessageFeatureUnknown(), Map.of("feature", args[1]));
             return true;
         }
         String action = args[2].toLowerCase(Locale.ROOT);
@@ -116,12 +123,16 @@ public class PerformanceCommand implements CommandExecutor {
             case "off", "disable" -> enable = false;
             case "toggle" -> enable = !current;
             default -> {
-                sender.sendMessage("Verwendung: /performance feature <sampling|storage|bossbar|report|pterodactyl|viewdistance|actions> <on|off|toggle>");
+                sendFormatted(sender, config.getMessageUsageFeature(), Map.of());
                 return true;
             }
         }
         plugin.updateFeatureToggle(feature.configPath(), enable);
-        sender.sendMessage("Feature " + feature.displayName() + " " + (enable ? "aktiviert." : "deaktiviert."));
+        String state = enable ? "aktiviert" : "deaktiviert";
+        sendFormatted(sender, config.getMessageFeatureToggle(), Map.of(
+                "feature", feature.displayName(),
+                "state", state
+        ));
         return true;
     }
 
@@ -142,7 +153,7 @@ public class PerformanceCommand implements CommandExecutor {
         int windowSeconds = Math.max(10, config.getReportWindowSeconds());
         List<PerformanceSample> samples = tracker.getSamplesSinceSeconds(windowSeconds);
         if (samples.isEmpty()) {
-            sender.sendMessage("Keine Daten für den Report verfügbar.");
+            sendFormatted(sender, config.getMessageReportEmpty(), Map.of());
             return;
         }
         PerformanceAnalyzer analyzer = new PerformanceAnalyzer();
@@ -158,33 +169,50 @@ public class PerformanceCommand implements CommandExecutor {
         );
         StatsWindow msptStats = result.msptStats();
         PerformanceAnalyzer.Correlations correlations = result.correlations();
-        sender.sendMessage("Performance-Report (" + windowSeconds + "s):");
-        sender.sendMessage("MSPT Ø " + ONE_DECIMAL.format(msptStats.average()) + "ms, P95 "
-                + ONE_DECIMAL.format(msptStats.p95()) + "ms, Spikes " + result.spikeCount());
-        sender.sendMessage("Korrelation MSPT: Entities r=" + TWO_DECIMAL.format(correlations.entities())
-                + ", Chunks r=" + TWO_DECIMAL.format(correlations.chunks())
-                + ", Spieler r=" + TWO_DECIMAL.format(correlations.players()));
+        sendFormatted(sender, config.getMessageReportHeader(), Map.of(
+                "window", Integer.toString(windowSeconds)
+        ));
+        sendFormatted(sender, config.getMessageReportMspt(), Map.of(
+                "mspt_avg", ONE_DECIMAL.format(msptStats.average()),
+                "mspt_p95", ONE_DECIMAL.format(msptStats.p95()),
+                "spike_count", Integer.toString(result.spikeCount())
+        ));
+        sendFormatted(sender, config.getMessageReportCorrelation(), Map.of(
+                "corr_entities", TWO_DECIMAL.format(correlations.entities()),
+                "corr_chunks", TWO_DECIMAL.format(correlations.chunks()),
+                "corr_players", TWO_DECIMAL.format(correlations.players())
+        ));
         if (result.bottlenecks().isEmpty()) {
-            sender.sendMessage("Engpässe: keine auffälligen Indikatoren.");
+            sendFormatted(sender, config.getMessageReportBottleneckNone(), Map.of());
         } else {
-            sender.sendMessage("Engpässe:");
-            result.bottlenecks().forEach(hint -> sender.sendMessage(" - " + hint));
+            sendFormatted(sender, config.getMessageReportBottleneckHeader(), Map.of());
+            result.bottlenecks().forEach(hint -> sendFormatted(sender, config.getMessageReportBottleneckItem(),
+                    Map.of("bottleneck", hint)));
         }
         if (!result.peakWindows().isEmpty()) {
-            sender.sendMessage("Top-" + result.peakWindows().size() + " Peak-Windows ("
-                    + config.getReportPeakWindowSeconds() + "s):");
+            sendFormatted(sender, config.getMessageReportPeakHeader(), Map.of(
+                    "count", Integer.toString(result.peakWindows().size()),
+                    "window", Integer.toString(config.getReportPeakWindowSeconds())
+            ));
             int index = 1;
             for (PerformanceAnalyzer.PeakWindow window : result.peakWindows()) {
-                sender.sendMessage(" " + index + ") "
-                        + TIME_FORMAT.format(window.start()) + " - " + TIME_FORMAT.format(window.end())
-                        + ": P95 " + ONE_DECIMAL.format(window.msptStats().p95()) + "ms, Ø "
-                        + ONE_DECIMAL.format(window.msptStats().average()) + "ms, Ø Entities "
-                        + ONE_DECIMAL.format(window.averageEntities()) + ", Ø Chunks "
-                        + ONE_DECIMAL.format(window.averageChunks()) + ", Ø Spieler "
-                        + ONE_DECIMAL.format(window.averagePlayers()));
+                sendFormatted(sender, config.getMessageReportPeakItem(), Map.of(
+                        "index", Integer.toString(index),
+                        "start", TIME_FORMAT.format(window.start()),
+                        "end", TIME_FORMAT.format(window.end()),
+                        "mspt_p95", ONE_DECIMAL.format(window.msptStats().p95()),
+                        "mspt_avg", ONE_DECIMAL.format(window.msptStats().average()),
+                        "entities", ONE_DECIMAL.format(window.averageEntities()),
+                        "chunks", ONE_DECIMAL.format(window.averageChunks()),
+                        "players", ONE_DECIMAL.format(window.averagePlayers())
+                ));
                 index++;
             }
         }
+    }
+
+    private void sendFormatted(CommandSender sender, String message, Map<String, String> placeholders) {
+        sender.sendMessage(messageFormatter.formatLegacy(sender, message, placeholders));
     }
 
     private enum FeatureToggle {

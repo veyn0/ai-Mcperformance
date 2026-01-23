@@ -24,9 +24,29 @@ bossbar:
   # Aktiviert die BossBar-Anzeige.
   enabled: true
   # Format der BossBar-Anzeige. {metric} = Name der Metrik, {values} = aktuelle Werte.
-  title-format: "{metric}: {values}"
+  title-format: "<aqua>{metric}</aqua> <gray>»</gray> <white>{values}</white>"
   # Nutze Rollup-Statistiken (Median/P95) statt Mittelwerten in der BossBar.
   use-rollup-stats: false
+
+status-overview:
+  # Aktiviert die Statusübersicht, die regelmäßig broadcastet wird.
+  enabled: false
+  # Intervall in Minuten für den Broadcast.
+  interval-minutes: 5
+  # Zeitfenster (in Sekunden) für Durchschnittswerte.
+  sample-window-seconds: 60
+  broadcast:
+    # In den Chat der Spieler senden.
+    chat: true
+    # In die Konsole senden.
+    console: true
+  # Nachrichtenzeilen, die per Placeholder/MiniMessage formatiert werden.
+  lines:
+    - "<gold>Performance-Status</gold> <gray>({window_seconds}s)</gray>"
+    - "<yellow>MSPT</yellow>: <white>{mspt}</white> <gray>|</gray> <yellow>TPS</yellow>: <white>{tps}</white>"
+    - "<yellow>Entities</yellow>: <white>{entities}</white> <gray>|</gray> <yellow>Chunks</yellow>: <white>{chunks}</white>"
+    - "<yellow>RAM</yellow>: <white>{ram_mb} MB</white> <gray>|</gray> <yellow>CPU</yellow>: <white>{cpu_percent}%</white>"
+    - "<yellow>Spieler</yellow>: <white>{players}</white> <gray>|</gray> <yellow>Sichtweite</yellow>: <white>{view_distance}</white>"
 
 report:
   # Aktiviert das Erstellen von Reports.
@@ -127,3 +147,31 @@ actions:
       animal: 10
       ambient: 5
       water-animal: 5
+
+messages:
+  reload: "<green>AI-McPerformance-Konfiguration neu geladen.</green>"
+  only-player: "<red>Dieser Befehl kann nur im Spiel genutzt werden.</red>"
+  usage:
+    monitor: "<gray>Verwendung:</gray> <white>/performance monitor &lt;mspt|tps|entities|ram|cpu|chunks|viewdistance&gt; &lt;on|off|toggle&gt;</white>"
+    feature: "<gray>Oder:</gray> <white>/performance feature &lt;sampling|storage|bossbar|report|pterodactyl|viewdistance|actions&gt; &lt;on|off|toggle&gt;</white>"
+    reload: "<gray>Oder:</gray> <white>/performance reload</white>"
+  bossbar:
+    disabled: "<red>BossBar-Monitoring ist derzeit deaktiviert.</red>"
+    unknown-metric: "<red>Unbekanntes Metric:</red> <white>{metric}</white>"
+    toggle: "<green>BossBar für</green> <yellow>{metric}</yellow> <green>{state}</green>."
+  feature:
+    unknown: "<red>Unbekanntes Feature:</red> <white>{feature}</white>"
+    toggle: "<green>Feature</green> <yellow>{feature}</yellow> <green>{state}</green>."
+  report:
+    disabled: "<red>Performance-Reports sind derzeit deaktiviert.</red>"
+    empty: "<red>Keine Daten für den Report verfügbar.</red>"
+    header: "<gold>Performance-Report</gold> <gray>({window}s)</gray>:"
+    mspt: "<yellow>MSPT</yellow> Ø <white>{mspt_avg}ms</white>, P95 <white>{mspt_p95}ms</white>, Spikes <white>{spike_count}</white>"
+    correlation: "<yellow>Korrelation MSPT:</yellow> Entities r=<white>{corr_entities}</white>, Chunks r=<white>{corr_chunks}</white>, Spieler r=<white>{corr_players}</white>"
+    bottlenecks:
+      none: "<green>Engpässe:</green> keine auffälligen Indikatoren."
+      header: "<gold>Engpässe:</gold>"
+      item: "<gray>-</gray> <white>{bottleneck}</white>"
+    peaks:
+      header: "<gold>Top-{count} Peak-Windows</gold> <gray>({window}s)</gray>:"
+      item: "<gray>{index})</gray> <white>{start} - {end}</white>: P95 <white>{mspt_p95}ms</white>, Ø <white>{mspt_avg}ms</white>, Ø Entities <white>{entities}</white>, Ø Chunks <white>{chunks}</white>, Ø Spieler <white>{players}</white>"

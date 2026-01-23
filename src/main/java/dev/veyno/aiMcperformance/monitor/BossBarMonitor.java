@@ -5,6 +5,7 @@ import dev.veyno.aiMcperformance.metrics.MetricType;
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
 import dev.veyno.aiMcperformance.metrics.StatsWindow;
+import dev.veyno.aiMcperformance.message.MessageFormatter;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceStatus;
 import java.text.DecimalFormat;
 import java.util.EnumMap;
@@ -25,6 +26,7 @@ public class BossBarMonitor {
     private final PerformanceConfig config;
     private final PerformanceTracker tracker;
     private final Supplier<ViewDistanceStatus> viewDistanceStatusSupplier;
+    private final MessageFormatter messageFormatter = new MessageFormatter();
     private final Map<UUID, EnumMap<MetricType, BossBar>> bars = new java.util.HashMap<>();
 
     public BossBarMonitor(
@@ -117,9 +119,15 @@ public class BossBarMonitor {
             case CHUNKS -> formatWindowValues("", sample -> sample.chunks(), tracker::averageChunks);
             case VIEW_DISTANCE -> formatViewDistanceStatus();
         };
-        return config.getBossBarTitleFormat()
-                .replace("{metric}", type.getDisplayName())
-                .replace("{values}", values);
+        String raw = config.getBossBarTitleFormat();
+        return messageFormatter.formatLegacy(
+                null,
+                raw,
+                Map.of(
+                        "metric", type.getDisplayName(),
+                        "values", values
+                )
+        );
     }
 
     private String formatWindowValues(

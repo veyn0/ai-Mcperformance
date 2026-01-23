@@ -4,6 +4,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.SpawnCategory;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 public class PerformanceConfig {
@@ -66,6 +67,31 @@ public class PerformanceConfig {
 
     public boolean isBossBarStatsEnabled() {
         return config.getBoolean("bossbar.use-rollup-stats", false);
+    }
+
+    public boolean isStatusOverviewEnabled() {
+        return config.getBoolean("status-overview.enabled", false);
+    }
+
+    public int getStatusOverviewIntervalMinutes() {
+        return config.getInt("status-overview.interval-minutes", 5);
+    }
+
+    public boolean isStatusOverviewChatEnabled() {
+        return config.getBoolean("status-overview.broadcast.chat", false);
+    }
+
+    public boolean isStatusOverviewConsoleEnabled() {
+        return config.getBoolean("status-overview.broadcast.console", true);
+    }
+
+    public int getStatusOverviewSampleWindowSeconds() {
+        return config.getInt("status-overview.sample-window-seconds", 60);
+    }
+
+    public List<String> getStatusOverviewLines() {
+        List<String> lines = config.getStringList("status-overview.lines");
+        return lines != null ? lines : List.of();
     }
 
     public int getReportWindowSeconds() {
@@ -245,6 +271,95 @@ public class PerformanceConfig {
             }
         }
         return limits;
+    }
+
+    public String getMessageReload() {
+        return message("messages.reload", "AI-McPerformance-Konfiguration neu geladen.");
+    }
+
+    public String getMessageOnlyPlayer() {
+        return message("messages.only-player", "Dieser Befehl kann nur im Spiel genutzt werden.");
+    }
+
+    public String getMessageUsageMonitor() {
+        return message("messages.usage.monitor",
+                "Verwendung: /performance monitor <mspt|tps|entities|ram|cpu|chunks|viewdistance> <on|off|toggle>");
+    }
+
+    public String getMessageUsageFeature() {
+        return message("messages.usage.feature",
+                "Oder: /performance feature <sampling|storage|bossbar|report|pterodactyl|viewdistance|actions> <on|off|toggle>");
+    }
+
+    public String getMessageUsageReload() {
+        return message("messages.usage.reload", "Oder: /performance reload");
+    }
+
+    public String getMessageBossBarDisabled() {
+        return message("messages.bossbar.disabled", "BossBar-Monitoring ist derzeit deaktiviert.");
+    }
+
+    public String getMessageBossBarUnknownMetric() {
+        return message("messages.bossbar.unknown-metric", "Unbekanntes Metric: {metric}");
+    }
+
+    public String getMessageBossBarToggle() {
+        return message("messages.bossbar.toggle", "BossBar für {metric} {state}.");
+    }
+
+    public String getMessageFeatureUnknown() {
+        return message("messages.feature.unknown", "Unbekanntes Feature: {feature}");
+    }
+
+    public String getMessageFeatureToggle() {
+        return message("messages.feature.toggle", "Feature {feature} {state}.");
+    }
+
+    public String getMessageReportDisabled() {
+        return message("messages.report.disabled", "Performance-Reports sind derzeit deaktiviert.");
+    }
+
+    public String getMessageReportEmpty() {
+        return message("messages.report.empty", "Keine Daten für den Report verfügbar.");
+    }
+
+    public String getMessageReportHeader() {
+        return message("messages.report.header", "Performance-Report ({window}s):");
+    }
+
+    public String getMessageReportMspt() {
+        return message("messages.report.mspt",
+                "MSPT Ø {mspt_avg}ms, P95 {mspt_p95}ms, Spikes {spike_count}");
+    }
+
+    public String getMessageReportCorrelation() {
+        return message("messages.report.correlation",
+                "Korrelation MSPT: Entities r={corr_entities}, Chunks r={corr_chunks}, Spieler r={corr_players}");
+    }
+
+    public String getMessageReportBottleneckNone() {
+        return message("messages.report.bottlenecks.none", "Engpässe: keine auffälligen Indikatoren.");
+    }
+
+    public String getMessageReportBottleneckHeader() {
+        return message("messages.report.bottlenecks.header", "Engpässe:");
+    }
+
+    public String getMessageReportBottleneckItem() {
+        return message("messages.report.bottlenecks.item", " - {bottleneck}");
+    }
+
+    public String getMessageReportPeakHeader() {
+        return message("messages.report.peaks.header", "Top-{count} Peak-Windows ({window}s):");
+    }
+
+    public String getMessageReportPeakItem() {
+        return message("messages.report.peaks.item",
+                " {index}) {start} - {end}: P95 {mspt_p95}ms, Ø {mspt_avg}ms, Ø Entities {entities}, Ø Chunks {chunks}, Ø Spieler {players}");
+    }
+
+    private String message(String path, String fallback) {
+        return config.getString(path, fallback);
     }
 
     private SpawnCategory parseSpawnCategory(String key) {
