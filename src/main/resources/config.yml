@@ -29,6 +29,10 @@ report:
   spike-mspt: 50.0
   # Mindestkorrelation für Hinweis (0-1).
   correlation-threshold: 0.5
+  # Länge des Peak-Fensters für die Top-N Auswertung.
+  peak-window-seconds: 30
+  # Anzahl der Top-Peak-Fenster im Report.
+  peak-window-count: 3
 
 pterodactyl:
   # Aktiviert das Auslesen der CPU-Auslastung via Pterodactyl (benötigt Pterodactyl4J).
