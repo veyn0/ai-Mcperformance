@@ -2,6 +2,7 @@ name: ai-mcperformance
 version: '1.0-SNAPSHOT'
 main: dev.veyno.aiMcperformance.AiMcperformance
 api-version: '1.21'
+folia-supported: true
 commands:
   performance:
     description: Zeigt Performance-Monitoring BossBars an oder erstellt einen Report.

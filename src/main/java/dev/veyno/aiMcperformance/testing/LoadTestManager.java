@@ -7,6 +7,8 @@ import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
 import dev.veyno.aiMcperformance.metrics.StatsWindow;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceOptimizer;
 import dev.veyno.aiMcperformance.optimization.actions.ActionEngine;
+import dev.veyno.aiMcperformance.scheduler.SchedulerUtil;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -26,7 +28,6 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.SpawnCategory;
-import org.bukkit.scheduler.BukkitTask;
 
 public class LoadTestManager {
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ISO_OFFSET_DATE_TIME
@@ -37,8 +38,8 @@ public class LoadTestManager {
     private final ViewDistanceOptimizer viewDistanceOptimizer;
     private final ActionEngine actionEngine;
     private final List<StepRecord> stepRecords = new ArrayList<>();
-    private BukkitTask stepTask;
-    private BukkitTask endTask;
+    private ScheduledTask stepTask;
+    private ScheduledTask endTask;
     private boolean running;
     private Instant testStartedAt;
     private Instant testEndsAt;
@@ -123,15 +124,16 @@ public class LoadTestManager {
         }
 
         pauseOptimizations();
-        distributePlayersIfConfigured();
-
-        action.captureBaseline();
-        action.apply(stepIndex);
+        SchedulerUtil.runGlobal(plugin, () -> {
+            distributePlayersIfConfigured();
+            action.captureBaseline();
+            action.apply(stepIndex);
+        });
 
         long stepTicks = Duration.ofMinutes(stepIntervalMinutes).getSeconds() * 20L;
-        stepTask = Bukkit.getScheduler().runTaskTimer(plugin, this::advanceStep, stepTicks, stepTicks);
+        stepTask = SchedulerUtil.runAtFixedRate(plugin, this::advanceStep, stepTicks, stepTicks);
         long totalTicks = Duration.ofMinutes(durationMinutes).getSeconds() * 20L;
-        endTask = Bukkit.getScheduler().runTaskLater(plugin, this::stop, totalTicks);
+        endTask = SchedulerUtil.runDelayed(plugin, this::stop, totalTicks);
         running = true;
         plugin.getLogger().info("Load test started with " + action.name() + " for " + durationMinutes + " minutes.");
         return true;
@@ -153,7 +155,7 @@ public class LoadTestManager {
             endTask = null;
         }
         if (action != null) {
-            action.restoreBaseline();
+            SchedulerUtil.runGlobal(plugin, action::restoreBaseline);
         }
         actionOverride = null;
         writeOutputFiles();
@@ -258,8 +260,7 @@ public class LoadTestManager {
             double x = spawn.getX() + Math.cos(angle) * distance;
             double z = spawn.getZ() + Math.sin(angle) * distance;
             Location target = new Location(world, x, spawn.getY(), z);
-            Location safe = world.getHighestBlockAt(target).getLocation().add(0.5, 1.0, 0.5);
-            player.teleport(safe);
+            teleportSafely(player, target);
             index++;
         }
     }
@@ -273,9 +274,22 @@ public class LoadTestManager {
             double dx = (Math.random() * 2 - 1) * radius;
             double dz = (Math.random() * 2 - 1) * radius;
             Location target = new Location(world, spawn.getX() + dx, spawn.getY(), spawn.getZ() + dz);
-            Location safe = world.getHighestBlockAt(target).getLocation().add(0.5, 1.0, 0.5);
-            player.teleport(safe);
+            teleportSafely(player, target);
         }
+    }
+
+    private void teleportSafely(Player player, Location target) {
+        if (player == null || target == null || target.getWorld() == null) {
+            return;
+        }
+        SchedulerUtil.runOnLocation(plugin, target, () -> {
+            Location safe = target.getWorld().getHighestBlockAt(target).getLocation().add(0.5, 1.0, 0.5);
+            SchedulerUtil.runOnPlayer(plugin, player, () -> {
+                if (player.isOnline()) {
+                    player.teleport(safe);
+                }
+            });
+        });
     }
 
     private void writeOutputFiles() {

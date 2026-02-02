@@ -3,6 +3,8 @@ package dev.veyno.aiMcperformance.optimization;
 import dev.veyno.aiMcperformance.config.PerformanceConfig;
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
+import dev.veyno.aiMcperformance.scheduler.SchedulerUtil;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -11,7 +13,6 @@ import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitTask;
 
 public class ViewDistanceOptimizer implements Runnable {
     private static final double KP = 0.22;
@@ -21,7 +22,7 @@ public class ViewDistanceOptimizer implements Runnable {
     private final Plugin plugin;
     private final PerformanceConfig config;
     private final PerformanceTracker tracker;
-    private BukkitTask task;
+    private ScheduledTask task;
     private Instant lastChange = Instant.EPOCH;
     private Instant belowTargetSince = null;
     private Instant lastRun = Instant.EPOCH;
@@ -36,7 +37,7 @@ public class ViewDistanceOptimizer implements Runnable {
     public void schedule() {
         stop();
         int intervalSeconds = Math.max(5, config.getViewDistanceCheckIntervalSeconds());
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this, intervalSeconds * 20L, intervalSeconds * 20L);
+        task = SchedulerUtil.runAtFixedRate(plugin, this, intervalSeconds * 20L, intervalSeconds * 20L);
     }
 
     public void stop() {

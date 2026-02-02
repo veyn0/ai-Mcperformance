@@ -1,6 +1,7 @@
 package dev.veyno.aiMcperformance.metrics.storage;
 
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
+import dev.veyno.aiMcperformance.scheduler.SchedulerUtil;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,7 +17,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 public class CsvPerformanceSampleStore implements PerformanceSampleStore {
@@ -86,7 +86,7 @@ public class CsvPerformanceSampleStore implements PerformanceSampleStore {
         if (!flushScheduled.compareAndSet(false, true)) {
             return;
         }
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        SchedulerUtil.runAsync(plugin, () -> {
             try {
                 flushPending();
                 lastFlushMillis.set(System.currentTimeMillis());
