@@ -7,8 +7,10 @@ import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
 import dev.veyno.aiMcperformance.metrics.StatsWindow;
 import dev.veyno.aiMcperformance.message.MessageFormatter;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceStatus;
+import dev.veyno.aiMcperformance.scheduler.SchedulerUtil;
 import java.text.DecimalFormat;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -27,7 +29,8 @@ public class BossBarMonitor {
     private final PerformanceTracker tracker;
     private final Supplier<ViewDistanceStatus> viewDistanceStatusSupplier;
     private final MessageFormatter messageFormatter = new MessageFormatter();
-    private final Map<UUID, EnumMap<MetricType, BossBar>> bars = new java.util.HashMap<>();
+    private final Map<UUID, EnumMap<MetricType, BossBar>> bars = new HashMap<>();
+    private final Object lock = new Object();
 
     public BossBarMonitor(
             Plugin plugin,
@@ -50,60 +53,81 @@ public class BossBarMonitor {
     }
 
     public void enable(Player player, MetricType type) {
-        bars.computeIfAbsent(player.getUniqueId(), key -> new EnumMap<>(MetricType.class));
-        Map<MetricType, BossBar> playerBars = bars.get(player.getUniqueId());
-        if (playerBars.containsKey(type)) {
-            return;
+        synchronized (lock) {
+            bars.computeIfAbsent(player.getUniqueId(), key -> new EnumMap<>(MetricType.class));
+            Map<MetricType, BossBar> playerBars = bars.get(player.getUniqueId());
+            if (playerBars.containsKey(type)) {
+                return;
+            }
+            BossBar bar = Bukkit.createBossBar(formatTitle(type), BarColor.BLUE, BarStyle.SOLID);
+            SchedulerUtil.runOnPlayer(plugin, player, () -> {
+                bar.addPlayer(player);
+                bar.setProgress(1.0);
+            });
+            playerBars.put(type, bar);
         }
-        BossBar bar = Bukkit.createBossBar(formatTitle(type), BarColor.BLUE, BarStyle.SOLID);
-        bar.addPlayer(player);
-        bar.setProgress(1.0);
-        playerBars.put(type, bar);
     }
 
     public void disable(Player player, MetricType type) {
-        Map<MetricType, BossBar> playerBars = bars.get(player.getUniqueId());
-        if (playerBars == null) {
-            return;
-        }
-        BossBar bar = playerBars.remove(type);
-        if (bar != null) {
-            bar.removeAll();
-        }
-        if (playerBars.isEmpty()) {
-            bars.remove(player.getUniqueId());
+        synchronized (lock) {
+            Map<MetricType, BossBar> playerBars = bars.get(player.getUniqueId());
+            if (playerBars == null) {
+                return;
+            }
+            BossBar bar = playerBars.remove(type);
+            if (bar != null) {
+                SchedulerUtil.runOnPlayer(plugin, player, bar::removeAll);
+            }
+            if (playerBars.isEmpty()) {
+                bars.remove(player.getUniqueId());
+            }
         }
     }
 
     public void disableAll(Player player) {
-        Map<MetricType, BossBar> playerBars = bars.remove(player.getUniqueId());
+        Map<MetricType, BossBar> playerBars;
+        synchronized (lock) {
+            playerBars = bars.remove(player.getUniqueId());
+        }
         if (playerBars == null) {
             return;
         }
-        playerBars.values().forEach(BossBar::removeAll);
+        SchedulerUtil.runOnPlayer(plugin, player, () -> playerBars.values().forEach(BossBar::removeAll));
     }
 
     public void disableAllPlayers() {
-        bars.values().forEach(playerBars -> playerBars.values().forEach(BossBar::removeAll));
-        bars.clear();
+        Map<UUID, EnumMap<MetricType, BossBar>> snapshot;
+        synchronized (lock) {
+            snapshot = new HashMap<>(bars);
+            bars.clear();
+        }
+        snapshot.values().forEach(playerBars -> playerBars.values().forEach(BossBar::removeAll));
     }
 
     public boolean isEnabled(Player player, MetricType type) {
-        Map<MetricType, BossBar> playerBars = bars.get(player.getUniqueId());
-        return playerBars != null && playerBars.containsKey(type);
+        synchronized (lock) {
+            Map<MetricType, BossBar> playerBars = bars.get(player.getUniqueId());
+            return playerBars != null && playerBars.containsKey(type);
+        }
     }
 
     public void updateAll() {
-        for (Map.Entry<UUID, EnumMap<MetricType, BossBar>> entry : bars.entrySet()) {
+        Map<UUID, EnumMap<MetricType, BossBar>> snapshot = new HashMap<>();
+        synchronized (lock) {
+            bars.forEach((key, value) -> snapshot.put(key, new EnumMap<>(value)));
+        }
+        for (Map.Entry<UUID, EnumMap<MetricType, BossBar>> entry : snapshot.entrySet()) {
             Player player = Bukkit.getPlayer(entry.getKey());
             if (player == null || !player.isOnline()) {
                 continue;
             }
-            for (Map.Entry<MetricType, BossBar> barEntry : entry.getValue().entrySet()) {
-                BossBar bar = barEntry.getValue();
-                bar.setTitle(formatTitle(barEntry.getKey()));
-                bar.setProgress(1.0);
-            }
+            SchedulerUtil.runOnPlayer(plugin, player, () -> {
+                for (Map.Entry<MetricType, BossBar> barEntry : entry.getValue().entrySet()) {
+                    BossBar bar = barEntry.getValue();
+                    bar.setTitle(formatTitle(barEntry.getKey()));
+                    bar.setProgress(1.0);
+                }
+            });
         }
     }
 

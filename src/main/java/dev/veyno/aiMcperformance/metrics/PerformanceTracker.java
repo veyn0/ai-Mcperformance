@@ -13,7 +13,7 @@ public class PerformanceTracker {
         this.maxWindowSeconds = Math.max(1, maxWindowSeconds);
     }
 
-    public void addSample(PerformanceSample sample) {
+    public synchronized void addSample(PerformanceSample sample) {
         samples.addLast(sample);
         Instant cutoff = sample.timestamp().minusSeconds(maxWindowSeconds);
         while (!samples.isEmpty() && samples.getFirst().timestamp().isBefore(cutoff)) {
@@ -21,7 +21,7 @@ public class PerformanceTracker {
         }
     }
 
-    public void restoreSamples(List<PerformanceSample> restoredSamples) {
+    public synchronized void restoreSamples(List<PerformanceSample> restoredSamples) {
         if (restoredSamples == null || restoredSamples.isEmpty()) {
             return;
         }
@@ -30,7 +30,7 @@ public class PerformanceTracker {
                 .forEach(this::addSample);
     }
 
-    public List<PerformanceSample> getSamplesSinceSeconds(int seconds) {
+    public synchronized List<PerformanceSample> getSamplesSinceSeconds(int seconds) {
         int targetSeconds = Math.max(1, seconds);
         Instant cutoff = Instant.now().minusSeconds(targetSeconds);
         return samples.stream()
@@ -38,7 +38,7 @@ public class PerformanceTracker {
                 .toList();
     }
 
-    public List<PerformanceSample> getSamplesBetween(Instant start, Instant end) {
+    public synchronized List<PerformanceSample> getSamplesBetween(Instant start, Instant end) {
         if (start == null || end == null) {
             return List.of();
         }
@@ -50,11 +50,11 @@ public class PerformanceTracker {
                 .toList();
     }
 
-    public PerformanceSample latestSample() {
+    public synchronized PerformanceSample latestSample() {
         return samples.peekLast();
     }
 
-    public MsptEwmaTrend msptEwmaTrend(int seconds, double alpha) {
+    public synchronized MsptEwmaTrend msptEwmaTrend(int seconds, double alpha) {
         List<PerformanceSample> windowSamples = getSamplesSinceSeconds(seconds).stream()
                 .sorted(java.util.Comparator.comparing(PerformanceSample::timestamp))
                 .toList();
@@ -76,40 +76,40 @@ public class PerformanceTracker {
         return new MsptEwmaTrend(ewma, trendPerSecond);
     }
 
-    public StatsWindow statsWindow(int seconds, java.util.function.ToDoubleFunction<PerformanceSample> extractor) {
+    public synchronized StatsWindow statsWindow(int seconds, java.util.function.ToDoubleFunction<PerformanceSample> extractor) {
         List<PerformanceSample> windowSamples = getSamplesSinceSeconds(seconds);
         return StatsWindow.fromSamples(windowSamples, extractor);
     }
 
-    public double averageMspt(int seconds) {
+    public synchronized double averageMspt(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::mspt));
     }
 
-    public double averageTps(int seconds) {
+    public synchronized double averageTps(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::tps));
     }
 
-    public double averageCpu(int seconds) {
+    public synchronized double averageCpu(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::cpuUsagePercent));
     }
 
-    public double averageRamBytes(int seconds) {
+    public synchronized double averageRamBytes(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::usedRamBytes));
     }
 
-    public double averageEntities(int seconds) {
+    public synchronized double averageEntities(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::entities));
     }
 
-    public double averageChunks(int seconds) {
+    public synchronized double averageChunks(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::chunks));
     }
 
-    public double averageViewDistance(int seconds) {
+    public synchronized double averageViewDistance(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::viewDistance));
     }
 
-    public double averagePlayers(int seconds) {
+    public synchronized double averagePlayers(int seconds) {
         return average(getSamplesSinceSeconds(seconds).stream().mapToDouble(PerformanceSample::players));
     }
 

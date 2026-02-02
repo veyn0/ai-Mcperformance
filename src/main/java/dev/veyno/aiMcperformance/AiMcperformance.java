@@ -17,7 +17,9 @@ import dev.veyno.aiMcperformance.optimization.actions.ActionEngine;
 import dev.veyno.aiMcperformance.optimization.actions.EntityActivationRangeAction;
 import dev.veyno.aiMcperformance.optimization.actions.MobCapsAction;
 import dev.veyno.aiMcperformance.optimization.actions.SimulationDistanceAction;
+import dev.veyno.aiMcperformance.scheduler.SchedulerUtil;
 import dev.veyno.aiMcperformance.testing.LoadTestManager;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 import java.nio.file.Path;
@@ -28,7 +30,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
 
 public final class AiMcperformance extends JavaPlugin {
     private PerformanceTracker tracker;
@@ -38,7 +39,7 @@ public final class AiMcperformance extends JavaPlugin {
     private ViewDistanceOptimizer viewDistanceOptimizer;
     private ActionEngine actionEngine;
     private PerformanceSampleStore sampleStore;
-    private BukkitTask samplingTask;
+    private ScheduledTask samplingTask;
     private StatusOverviewBroadcaster statusOverviewBroadcaster;
     private LoadTestManager loadTestManager;
 
@@ -111,17 +112,17 @@ public final class AiMcperformance extends JavaPlugin {
         if (samplingTask != null) {
             samplingTask.cancel();
         }
-        samplingTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
+        samplingTask = SchedulerUtil.runAtFixedRate(this, () -> {
             if (!performanceConfig.isSamplingEnabled()) {
                 return;
             }
             double mspt = Bukkit.getServer().getAverageTickTime();
             double tps = Bukkit.getServer().getTPS()[0];
             int entities = Bukkit.getWorlds().stream()
-                    .mapToInt(world -> world.getEntities().size())
+                    .mapToInt(World::getEntityCount)
                     .sum();
             int chunks = Bukkit.getWorlds().stream()
-                    .mapToInt(world -> world.getLoadedChunks().length)
+                    .mapToInt(World::getChunkCount)
                     .sum();
             int viewDistance = (int) Math.round(Bukkit.getWorlds().stream()
                     .mapToInt(World::getViewDistance)

@@ -2,13 +2,13 @@ package dev.veyno.aiMcperformance.metrics;
 
 import com.sun.management.OperatingSystemMXBean;
 import dev.veyno.aiMcperformance.config.PerformanceConfig;
+import dev.veyno.aiMcperformance.scheduler.SchedulerUtil;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitTask;
 
 public class PterodactylMetricsService {
     private final Plugin plugin;
@@ -18,7 +18,7 @@ public class PterodactylMetricsService {
     private boolean available;
     private boolean useLocalFallback;
     private OperatingSystemMXBean operatingSystemMXBean;
-    private BukkitTask refreshTask;
+    private ScheduledTask refreshTask;
 
     public PterodactylMetricsService(Plugin plugin, PerformanceConfig config) {
         this.plugin = plugin;
@@ -58,7 +58,7 @@ public class PterodactylMetricsService {
         }
         int refreshSeconds = Math.max(5, config.getPterodactylRefreshSeconds());
         stop();
-        refreshTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::refreshCpuUsage, 20L, refreshSeconds * 20L);
+        refreshTask = SchedulerUtil.runAsyncAtFixedRate(plugin, this::refreshCpuUsage, 20L, refreshSeconds * 20L);
     }
 
     public void stop() {

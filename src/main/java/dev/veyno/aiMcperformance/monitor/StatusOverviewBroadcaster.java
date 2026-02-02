@@ -5,6 +5,8 @@ import dev.veyno.aiMcperformance.message.MessageFormatter;
 import dev.veyno.aiMcperformance.metrics.PerformanceSample;
 import dev.veyno.aiMcperformance.metrics.PerformanceTracker;
 import dev.veyno.aiMcperformance.optimization.ViewDistanceStatus;
+import dev.veyno.aiMcperformance.scheduler.SchedulerUtil;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +16,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitTask;
 
 public class StatusOverviewBroadcaster {
     private static final DecimalFormat ONE_DECIMAL = new DecimalFormat("0.0");
@@ -24,7 +25,7 @@ public class StatusOverviewBroadcaster {
     private final PerformanceTracker tracker;
     private final Supplier<ViewDistanceStatus> viewDistanceStatusSupplier;
     private final MessageFormatter messageFormatter = new MessageFormatter();
-    private BukkitTask task;
+    private ScheduledTask task;
 
     public StatusOverviewBroadcaster(
             Plugin plugin,
@@ -47,7 +48,7 @@ public class StatusOverviewBroadcaster {
             return;
         }
         int intervalMinutes = Math.max(1, config.getStatusOverviewIntervalMinutes());
-        task = Bukkit.getScheduler().runTaskTimer(
+        task = SchedulerUtil.runAtFixedRate(
                 plugin,
                 this::broadcast,
                 intervalMinutes * 60L * 20L,
@@ -73,7 +74,7 @@ public class StatusOverviewBroadcaster {
         Map<String, String> placeholders = buildPlaceholders();
         if (config.isStatusOverviewChatEnabled()) {
             for (Player player : Bukkit.getOnlinePlayers()) {
-                sendLines(player, lines, placeholders);
+                SchedulerUtil.runOnPlayer(plugin, player, () -> sendLines(player, lines, placeholders));
             }
         }
         if (config.isStatusOverviewConsoleEnabled()) {
