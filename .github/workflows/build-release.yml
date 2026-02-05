@@ -1,0 +1,84 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Determine Minecraft version
+        id: mc
+        run: |
+          python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          import re
+
+          tree = ET.parse('pom.xml')
+          root = tree.getroot()
+          ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+
+          version_text = None
+          for dep in root.findall('.//m:dependency', ns):
+            artifact = dep.find('m:artifactId', ns)
+            if artifact is not None and artifact.text == 'paper-api':
+              ver = dep.find('m:version', ns)
+              if ver is not None and ver.text:
+                version_text = ver.text.strip()
+                break
+
+          if not version_text:
+            raise SystemExit('paper-api version not found in pom.xml')
+
+          match = re.match(r'(\d+\.\d+(?:\.\d+)?)', version_text)
+          if not match:
+            raise SystemExit(f'Could not parse Minecraft version from {version_text}')
+
+          mc_version = match.group(1)
+          output_path = os.environ.get('GITHUB_OUTPUT')
+          if not output_path:
+            raise SystemExit('GITHUB_OUTPUT is not set')
+          with open(output_path, 'a', encoding='utf-8') as fh:
+            fh.write(f"mc_version={mc_version}\n")
+          PY
+
+      - name: Build with Maven
+        run: mvn -B -DskipTests package
+
+      - name: Prepare release asset
+        id: asset
+        run: |
+          RELEASE_ID="${{ steps.mc.outputs.mc_version }}-${{ github.run_number }}"
+          if [ -f "target/ai-mcperformance-1.0-SNAPSHOT.jar" ]; then
+            JAR_PATH="target/ai-mcperformance-1.0-SNAPSHOT.jar"
+          else
+            JAR_PATH=$(ls target/ai-mcperformance-*.jar | head -n 1)
+          fi
+          OUT_JAR="ai-mcperformance-${RELEASE_ID}.jar"
+          cp "$JAR_PATH" "$OUT_JAR"
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          echo "asset=$OUT_JAR" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "ai-mcperformance-${{ steps.asset.outputs.release_id }}"
+          name: "ai-mcperformance-${{ steps.asset.outputs.release_id }}"
+          files: "${{ steps.asset.outputs.asset }}"
